@@ -7,6 +7,17 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Hello Kitty Chess - Cute Retro Arcade</title>
+    
+    <!-- Open Graph / Link Embed Meta Tags -->
+    <meta property="og:title" content="Hello Kitty Chess - Cozy Arcade" />
+    <meta property="og:description" content="Play a beautiful, pixelated retro-arcade chess game with Hello Kitty and Batman themes! Create a multiplayer room and challenge your friends." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="favicon.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Hello Kitty Chess - Cozy Arcade" />
+    <meta name="twitter:description" content="Play a beautiful, pixelated retro-arcade chess game with Hello Kitty and Batman themes! Create a multiplayer room and challenge your friends." />
+    <meta name="twitter:image" content="favicon.svg" />
+    <meta name="theme-color" content="#FF4D6D" />
     <!-- Tailwind CSS for modern layout design -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Cozy Pixelated Fonts -->
@@ -274,6 +285,13 @@
 
       <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-center">
         <button
+          onclick="openAboutModal()"
+          class="cozy-btn-sakura text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5"
+          title="About"
+        >
+          <span>❓ INFO</span>
+        </button>
+        <button
           id="btnSound"
           class="cozy-btn-sakura text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5"
         >
@@ -288,13 +306,11 @@
           <span id="musicText">BGM: OFF</span>
         </button>
         <button
-          id="btnStatus"
-          class="cozy-btn-bat text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5 pointer-events-none"
+          id="btnSettings"
+          onclick="openSettingsModal()"
+          class="cozy-btn-bat text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5"
         >
-          <span
-            class="w-2 h-2 rounded-full bg-yellow-400 inline-block animate-ping"
-          ></span>
-          <span id="syncText">CONNECTING</span>
+          <span>⚙️ SETTINGS</span>
         </button>
       </div>
     </header>
@@ -492,10 +508,6 @@
                 <p class="text-[9px] text-[#4A1E2F] font-semibold">
                   White Pieces
                 </p>
-                <div
-                  id="white-presence-badge"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-[#FFF0F3] border-2 border-[#4A1E2F] rounded-full"
-                ></div>
               </div>
             </div>
             <div>
@@ -583,10 +595,6 @@
                   >10:00</span
                 >
                 <div
-                  id="white-presence-badge-mob"
-                  class="inline-flex items-center gap-1 px-1.5 py-0.5 mt-0.5 bg-[#FFF0F3] border border-[#4A1E2F] rounded-full w-fit"
-                ></div>
-                <div
                   id="captured-black-mob"
                   class="flex flex-wrap gap-0.5 min-h-[10px] mt-0.5"
                 ></div>
@@ -625,10 +633,6 @@
                   class="text-xs font-bold text-[#FF4D6D] font-mono vt-font leading-none"
                   >10:00</span
                 >
-                <div
-                  id="black-presence-badge-mob"
-                  class="inline-flex items-center gap-1 px-1.5 py-0.5 mt-0.5 bg-[#FFF0F3] border border-[#4A1E2F] rounded-full w-fit self-end"
-                ></div>
                 <div
                   id="captured-white-mob"
                   class="flex flex-wrap gap-0.5 min-h-[10px] mt-0.5 justify-end"
@@ -679,6 +683,13 @@
               LEAVE
             </button>
             <button
+              id="btnUndoMob"
+              onclick="undoMove()"
+              class="flex-1 cozy-btn-sakura text-[7px] py-1.5 text-white font-bold uppercase"
+            >
+              UNDO
+            </button>
+            <button
               onclick="flipBoard()"
               class="flex-1 cozy-btn-sakura text-[7px] py-1.5 text-white font-bold uppercase"
             >
@@ -711,10 +722,6 @@
                 >
                   Black Pieces
                 </p>
-                <div
-                  id="black-presence-badge"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-[#FFF0F3] border-2 border-[#4A1E2F] rounded-full"
-                ></div>
               </div>
             </div>
             <div>
@@ -758,12 +765,14 @@
               id="move-history-container"
               class="flex-grow overflow-y-auto text-xs vt-font text-[#4A1E2F] flex flex-col gap-1 pr-1 max-h-[110px] lg:max-h-[160px] cozy-scroll"
             >
-              <div
-                class="text-[#FF85A1] text-[10px] text-center my-auto font-mono"
-              >
-                WAITING...
-              </div>
             </div>
+            <button
+              id="btnUndoDesktop"
+              onclick="undoMove()"
+              class="cozy-btn-sakura text-[8px] py-1.5 w-full text-white font-bold mt-1 uppercase"
+            >
+              UNDO MOVE
+            </button>
           </div>
 
           <!-- Match Operations -->
@@ -784,6 +793,83 @@
         </div>
       </div>
     </main>
+
+    <footer class="w-full text-center pb-4 mt-2">
+      <p class="text-[8px] sm:text-[10px] text-[#FF85A1] font-bold uppercase tracking-widest vt-font drop-shadow-sm">
+        By #1 Hello Kitty Fan, <a href="https://salehwaleed.com" target="_blank" class="text-[#FF4D6D] hover:underline hover:text-white">Saleh</a>
+      </p>
+    </footer>
+
+    <!-- ABOUT MODAL -->
+    <div
+      id="about-modal"
+      class="fixed inset-0 bg-[#4A1E2F]/60 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in"
+    >
+      <div
+        class="bg-[#FFFDF9] border-4 border-[#4A1E2F] p-4 max-w-[200px] w-full text-center shadow-[0_4px_0px_#FF85A1] rounded-xl flex flex-col items-center gap-2"
+      >
+        <h2 class="text-xs font-bold text-[#FF4D6D] uppercase tracking-widest vt-font mt-1">
+          Hello Kitty Chess
+        </h2>
+        <p class="text-[7px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">
+          By #1 Hello Kitty Fan<br/>
+          <a href="https://salehwaleed.com" target="_blank" class="text-[#FF4D6D] hover:underline text-[9px]">SALEH</a>
+        </p>
+        <button
+          onclick="closeAboutModal()"
+          class="w-full cozy-btn-sakura text-[8px] py-1.5 mt-1 text-white font-bold"
+        >
+          CLOSE
+        </button>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div
+      id="settings-modal"
+      class="fixed inset-0 bg-[#4A1E2F]/60 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in"
+    >
+      <div
+        class="bg-[#FFFDF9] border-8 border-double border-[#4A1E2F] p-4 sm:p-5 max-w-xs w-full text-center shadow-[0_8px_0px_#FF85A1] rounded-2xl"
+      >
+        <h2 class="text-xs sm:text-sm font-bold text-[#FF4D6D] mb-4 uppercase tracking-widest">
+          AUDIO SETTINGS
+        </h2>
+        
+        <div class="flex flex-col gap-4 text-left">
+          <!-- SFX Volume -->
+          <div class="bg-pink-50 p-3 rounded-lg border border-pink-200 shadow-inner">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-[9px] font-bold text-gray-700">SFX VOLUME</span>
+              <button id="settings-btn-sfx" class="cozy-btn-bat px-2 py-1 text-[7px] text-white">ON</button>
+            </div>
+            <input type="range" id="sfx-volume-slider" min="0" max="1" step="0.05" value="1" class="w-full accent-[#FF4D6D]">
+          </div>
+
+          <!-- BGM Volume -->
+          <div class="bg-pink-50 p-3 rounded-lg border border-pink-200 shadow-inner">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-[9px] font-bold text-gray-700">MUSIC VOLUME</span>
+              <button id="settings-btn-music" class="cozy-btn-sakura px-2 py-1 text-[7px] text-white">OFF</button>
+            </div>
+            <input type="range" id="bgm-volume-slider" min="0" max="1" step="0.05" value="1" class="w-full accent-[#FF4D6D]">
+          </div>
+        </div>
+
+        <button
+          onclick="closeSettingsModal()"
+          class="w-full cozy-btn-bat text-[10px] py-2 mt-5 text-white font-bold hover:shadow-md transition-all"
+        >
+          CLOSE SETTINGS
+        </button>
+        
+        <div class="mt-4 pt-3 border-t-2 border-[#4A1E2F]/10 w-full text-center">
+           <p class="text-[7px] text-gray-500 font-bold uppercase tracking-widest">
+             By #1 Hello Kitty Fan, <a href="https://salehwaleed.com" target="_blank" class="text-[#FF4D6D] hover:underline">Saleh</a>
+           </p>
+        </div>
+      </div>
+    </div>
 
     <!-- PROFILE UNLOCK MODAL -->
     <div
@@ -971,6 +1057,8 @@
           this.enabled = true;
           this.musicEnabled = false;
           this.bgmTimer = null;
+          this.sfxMasterVolume = 1.0;
+          this.bgmMasterVolume = 1.0;
 
           // Track 1: Sakura Lullaby (Soft & warm major sequence)
           this.track1 = [
@@ -1043,9 +1131,13 @@
           }
         }
 
-        playBeep(freq, type = "sine", duration = 0.15, gainVal = 0.05) {
+        playBeep(freq, type = "sine", duration = 0.15, gainVal = 0.05, isBgm = false) {
           if (!this.enabled) return;
           this.init();
+          
+          const masterVol = isBgm ? this.bgmMasterVolume : this.sfxMasterVolume;
+          if (masterVol <= 0) return;
+
           const now = this.ctx.currentTime;
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
@@ -1057,7 +1149,8 @@
           filter.type = "lowpass";
           filter.frequency.setValueAtTime(1800, now);
 
-          gain.gain.setValueAtTime(gainVal, now);
+          // Boost global volume by 3.5x
+          gain.gain.setValueAtTime(gainVal * masterVol * 3.5, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
           osc.connect(filter);
@@ -1166,7 +1259,7 @@
             return;
           const note = this.currentTrackList[this.currentNoteIndex];
 
-          this.playBeep(note[0], "sine", note[1] * 0.55, 0.025);
+          this.playBeep(note[0], "sine", note[1] * 0.55, 0.025, true);
 
           const stepMs = note[1] * 600;
           this.currentNoteIndex =
@@ -1179,28 +1272,99 @@
 
       const sfx = new RetroSoundChip();
 
+      window.openAboutModal = function() {
+        if(sfx) sfx.playSelection();
+        document.getElementById("about-modal").classList.remove("hidden");
+        document.getElementById("about-logo-container").innerHTML = parseGridToSVG(uiGrids.kitty_avatar_sakura);
+      };
+
+      window.closeAboutModal = function() {
+        if(sfx) sfx.playClick();
+        document.getElementById("about-modal").classList.add("hidden");
+      };
+
+      window.openSettingsModal = function() {
+        sfx.playClick();
+        document.getElementById("settings-modal").classList.remove("hidden");
+        updateSettingsModalUI();
+      };
+
+      window.closeSettingsModal = function() {
+        sfx.playClick();
+        document.getElementById("settings-modal").classList.add("hidden");
+      };
+
+      function updateSettingsModalUI() {
+        const sfxBtn = document.getElementById("settings-btn-sfx");
+        const musicBtn = document.getElementById("settings-btn-music");
+        
+        sfxBtn.textContent = sfx.enabled ? "ON" : "OFF";
+        sfxBtn.className = sfx.enabled 
+          ? "cozy-btn-sakura px-2 py-1 text-[7px] text-white"
+          : "cozy-btn-bat px-2 py-1 text-[7px] text-white";
+
+        const bgmText = sfx.bgmState === 0 ? "OFF" : 
+                       (sfx.bgmState === 1 ? "SAKURA" : 
+                       (sfx.bgmState === 2 ? "BAT-CAVE" : "COZY"));
+                       
+        musicBtn.textContent = bgmText;
+        musicBtn.className = (sfx.bgmState !== 0)
+          ? "cozy-btn-sakura px-2 py-1 text-[7px] text-white"
+          : "cozy-btn-bat px-2 py-1 text-[7px] text-white";
+          
+        renderControlIcons();
+      }
+
       document.getElementById("btnSound").addEventListener("click", () => {
+        sfx.init();
         sfx.enabled = !sfx.enabled;
-        const soundTxt = document.getElementById("soundText");
         if (sfx.enabled) {
-          soundTxt.textContent = "SFX: ON";
+          document.getElementById("soundText").textContent = "SFX: ON";
           sfx.playSelection();
         } else {
-          soundTxt.textContent = "SFX: OFF";
-          sfx.stopBgm();
+          document.getElementById("soundText").textContent = "SFX: OFF";
           document.getElementById("musicText").textContent = "BGM: OFF";
+          sfx.stopBgm();
+          sfx.musicEnabled = false;
           sfx.bgmState = 0;
         }
-        renderControlIcons();
+        updateSettingsModalUI();
       });
 
       document.getElementById("btnMusic").addEventListener("click", () => {
         sfx.init();
         if (!sfx.enabled) return;
-
         const nextLabel = sfx.cycleBgm();
         document.getElementById("musicText").textContent = nextLabel;
-        renderControlIcons();
+        updateSettingsModalUI();
+      });
+
+      document.getElementById("settings-btn-sfx").addEventListener("click", () => {
+        sfx.init();
+        sfx.enabled = !sfx.enabled;
+        if (sfx.enabled) {
+          sfx.playSelection();
+        } else {
+          sfx.stopBgm();
+          sfx.musicEnabled = false;
+          sfx.bgmState = 0;
+        }
+        updateSettingsModalUI();
+      });
+
+      document.getElementById("settings-btn-music").addEventListener("click", () => {
+        sfx.init();
+        if (!sfx.enabled) return;
+        sfx.cycleBgm();
+        updateSettingsModalUI();
+      });
+
+      document.getElementById("sfx-volume-slider").addEventListener("input", (e) => {
+        sfx.sfxMasterVolume = parseFloat(e.target.value);
+      });
+
+      document.getElementById("bgm-volume-slider").addEventListener("input", (e) => {
+        sfx.bgmMasterVolume = parseFloat(e.target.value);
       });
     </script>
 
@@ -1785,6 +1949,7 @@
         onValue,
         runTransaction,
         get,
+        remove,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
       const appId =
@@ -1899,117 +2064,10 @@
         if (role === "w") {
           return { whitePresenceAt: seenAt };
         }
-
         if (role === "b") {
           return { blackPresenceAt: seenAt };
         }
-
         return {};
-      }
-
-      function paintPresenceBadge(elementId, mode, compact = false) {
-        const badge = document.getElementById(elementId);
-        if (!badge) return;
-
-        const styles = {
-          online: {
-            label: "ONLINE",
-            shell: "bg-[#E8FFF0] text-[#256E3D]",
-            dot: "bg-green-500",
-          },
-          offline: {
-            label: "OFFLINE",
-            shell: "bg-[#F3EEF5] text-[#5C4A60]",
-            dot: "bg-gray-400",
-          },
-          waiting: {
-            label: "WAITING",
-            shell: "bg-[#FFF6D8] text-[#8A5A10]",
-            dot: "bg-yellow-400",
-          },
-          local: {
-            label: "LOCAL",
-            shell: "bg-[#FFF0F3] text-[#C63A63]",
-            dot: "bg-[#FF85A1]",
-          },
-          bot: {
-            label: "BOT",
-            shell: "bg-[#ECE7EF] text-[#433347]",
-            dot: "bg-[#5C4A60]",
-          },
-        };
-        const currentStyle = styles[mode] || styles.offline;
-        const badgeClass = compact
-          ? "inline-flex items-center gap-1 px-1.5 py-0.5 border border-[#4A1E2F] rounded-full"
-          : "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-[#4A1E2F] rounded-full";
-        const textClass = compact
-          ? "text-[5px] font-bold uppercase tracking-wide"
-          : "text-[7px] font-bold uppercase tracking-wide";
-        const dotClass = compact ? "w-1.5 h-1.5" : "w-2 h-2";
-
-        badge.className = `${badgeClass} ${currentStyle.shell}`;
-        badge.innerHTML = `
-          <span class="${dotClass} rounded-full inline-block ${currentStyle.dot}"></span>
-          <span class="${textClass}">${currentStyle.label}</span>
-        `;
-      }
-
-      function getPresenceMode(role, payload = latestOnlinePayload) {
-        if (opponentType !== "online") {
-          return role === "w" ? "local" : "bot";
-        }
-
-        const playerUid =
-          role === "w" ? payload?.whitePlayer : payload?.blackPlayer;
-        const presenceAt =
-          role === "w"
-            ? payload?.whitePresenceAt || 0
-            : payload?.blackPresenceAt || 0;
-
-        if (!playerUid) {
-          return "waiting";
-        }
-
-        if (playerUid === currentUserId) {
-          return isFirebaseActive ? "online" : "offline";
-        }
-
-        return Date.now() - presenceAt <= PRESENCE_OFFLINE_AFTER_MS
-          ? "online"
-          : "offline";
-      }
-
-      function renderPresenceState(payload = latestOnlinePayload) {
-        paintPresenceBadge(
-          "white-presence-badge",
-          getPresenceMode("w", payload),
-        );
-        paintPresenceBadge(
-          "white-presence-badge-mob",
-          getPresenceMode("w", payload),
-          true,
-        );
-        paintPresenceBadge(
-          "black-presence-badge",
-          getPresenceMode("b", payload),
-        );
-        paintPresenceBadge(
-          "black-presence-badge-mob",
-          getPresenceMode("b", payload),
-          true,
-        );
-      }
-
-      async function sendPresenceHeartbeat() {
-        if (opponentType !== "online" || !onlineGameId || !currentUserId) {
-          return;
-        }
-
-        try {
-          await updateOnlineGame(onlineGameId, {}, "presence");
-        } catch (err) {
-          console.error("Failed to refresh live presence:", err);
-        }
       }
 
       function stopOnlinePresenceHeartbeat() {
@@ -2026,10 +2084,7 @@
           return;
         }
 
-        sendPresenceHeartbeat();
         presenceHeartbeatInterval = setInterval(() => {
-          renderPresenceState();
-          sendPresenceHeartbeat();
         }, PRESENCE_HEARTBEAT_MS);
       }
 
@@ -2039,17 +2094,12 @@
       window.normalizeRoomCode = normalizeRoomCode;
       window.createSecureRoomCode = createSecureRoomCode;
       window.canRunOnlineAction = canRunOnlineAction;
-      window.renderPresenceState = renderPresenceState;
+
       window.startOnlinePresenceHeartbeat = startOnlinePresenceHeartbeat;
       window.stopOnlinePresenceHeartbeat = stopOnlinePresenceHeartbeat;
 
       window.loginToFirebase = async function () {
         if (!auth) throw new Error("Auth not initialized");
-        const syncEl = document.getElementById("syncText");
-        const btnStatus = document.getElementById("btnStatus");
-        syncEl.textContent = "LOGGING IN...";
-        btnStatus.querySelector("span").className =
-          "w-2 h-2 rounded-full bg-yellow-400 inline-block animate-pulse";
         try {
           if (
             typeof __initial_auth_token !== "undefined" &&
@@ -2060,17 +2110,11 @@
             await signInAnonymously(auth);
           }
         } catch (err) {
-          syncEl.textContent = "OFFLINE";
-          btnStatus.querySelector("span").className =
-            "w-2 h-2 rounded-full bg-red-500 inline-block";
           throw err;
         }
       };
 
       async function setupCozyFirebase() {
-        const syncEl = document.getElementById("syncText");
-        const btnStatus = document.getElementById("btnStatus");
-
         if (!firebaseConfig.apiKey) {
           try {
             const response = await fetch("/__/firebase/init.json");
@@ -2086,9 +2130,6 @@
         }
 
         if (!firebaseConfig.apiKey) {
-          syncEl.textContent = "COZY LOCAL";
-          btnStatus.querySelector("span").className =
-            "w-2 h-2 rounded-full bg-green-400 inline-block";
           return;
         }
 
@@ -2114,22 +2155,13 @@
             if (user) {
               currentUserId = user.uid;
               isFirebaseActive = true;
-              syncEl.textContent = "LIVE COZY";
-              btnStatus.querySelector("span").className =
-                "w-2 h-2 rounded-full bg-green-500 inline-block";
             } else {
               currentUserId = null;
               isFirebaseActive = false;
-              syncEl.textContent = "OFFLINE";
-              btnStatus.querySelector("span").className =
-                "w-2 h-2 rounded-full bg-red-500 inline-block";
             }
           });
         } catch (err) {
           console.error("Firebase Setup Error:", err);
-          syncEl.textContent = "MOCK SYNC";
-          btnStatus.querySelector("span").className =
-            "w-2 h-2 rounded-full bg-yellow-400 inline-block";
         }
       }
 
@@ -2189,17 +2221,14 @@
           `artifacts/${appId}/public/data/games/${gameId}`,
         );
 
-        // Fetch room first to populate transaction cache and verify existence
-        const docSnap = await get(gameDocRef);
-        if (!docSnap.exists()) {
-          throw new Error("Game room not found!");
-        }
-
         const transaction = await runTransaction(
           gameDocRef,
           (currentData) => {
             if (!currentData) {
-              return;
+              return { _temporaryJoinAttempt: true };
+            }
+            if (currentData._temporaryJoinAttempt) {
+              return undefined;
             }
 
             if (
@@ -2223,7 +2252,6 @@
         );
 
         if (!transaction.committed) {
-          // If transaction was not committed but data exists, check occupation
           const data = transaction.snapshot.val();
           if (data && data.blackPlayer && data.blackPlayer !== currentUserId) {
             throw new Error("Game room is already occupied.");
@@ -2231,6 +2259,11 @@
         }
 
         const data = transaction.snapshot.val();
+        if (data && data._temporaryJoinAttempt) {
+          await remove(gameDocRef);
+          throw new Error("Game room not found!");
+        }
+
         if (data.whitePlayer === currentUserId) {
           throw new Error("Host cannot join as guest.");
         }
@@ -2255,7 +2288,6 @@
         const auditFields = buildRealtimeAuditFields(action);
         await update(gameDocRef, {
           ...fields,
-          ...buildPresenceFields(playerRole, auditFields.lastUpdated),
           ...auditFields,
         });
       };
@@ -2330,32 +2362,29 @@
           this.x = x;
           this.y = y;
           const angle = Math.random() * Math.PI * 2;
-          // Minimized velocity range for highly localized cozy clustering
           const speed = (Math.random() * 0.8 + 0.4) * velocityScale;
           this.vx = Math.cos(angle) * speed;
-          // Gentle drift lift to make them float elegantly
           this.vy = Math.sin(angle) * speed - (Math.random() * 0.4 + 0.1);
           this.alpha = 1;
           this.scale = Math.random() * 0.25 + 0.5;
           this.rotation = Math.random() * Math.PI * 2;
           this.rotationSpeed = Math.random() * 0.06 - 0.03;
           this.age = 0;
-          this.maxAge = Math.random() * 20 + 20; // 20-40 frames
+          this.maxAge = Math.random() * 20 + 20;
           this.color = color;
 
-          // Prioritize ultra-cute Hello Kitty hearts, bows & stars
           if (type === "sakura") {
             const r = Math.random();
             if (r < 0.55)
-              this.shape = "heart"; // High probability of sweet hearts
+              this.shape = "heart";
             else if (r < 0.85)
-              this.shape = "bow"; // Characteristic bows
+              this.shape = "bow";
             else this.shape = "star";
           } else if (type === "bat") {
             const r = Math.random();
             if (r < 0.45) this.shape = "bat";
             else if (r < 0.8)
-              this.shape = "heart"; // Cozy Gotham love hearts
+              this.shape = "heart";
             else this.shape = "star";
           } else {
             this.shape = "heart";
@@ -2365,7 +2394,7 @@
         update() {
           this.x += this.vx;
           this.y += this.vy;
-          this.vy += 0.025; // Gentle gravity draft
+          this.vy += 0.025;
           this.rotation += this.rotationSpeed;
           this.age++;
           this.alpha = 1 - this.age / this.maxAge;
@@ -2387,12 +2416,10 @@
           } else if (this.shape === "bat") {
             drawBat(ctx, 0, 0, size, this.color);
           } else {
-            // Cute bubble
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
             ctx.fill();
-            // Highlight dot
             ctx.fillStyle = "#FFFFFF";
             ctx.beginPath();
             ctx.arc(-size / 6, -size / 6, size / 6, 0, Math.PI * 2);
@@ -2433,20 +2460,17 @@
 
       function drawBow(ctx, x, y, size, color) {
         ctx.fillStyle = color;
-        // Left loop
         ctx.beginPath();
         ctx.arc(x - size / 3, y, size / 3, 0, Math.PI * 2);
         ctx.fill();
-        // Right loop
         ctx.beginPath();
         ctx.arc(x + size / 3, y, size / 3, 0, Math.PI * 2);
         ctx.fill();
-        // Center knot
         ctx.fillStyle = "#4A1E2F";
         ctx.beginPath();
         ctx.arc(x, y, size / 4, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = "#FFF05A"; // Cute yellow center
+        ctx.fillStyle = "#FFF05A";
         ctx.beginPath();
         ctx.arc(x, y, size / 6, 0, Math.PI * 2);
         ctx.fill();
@@ -2508,7 +2532,6 @@
       }
       requestAnimationFrame(animateParticles);
 
-      // Global Event listener for button clicks to trigger cozy particles
       window.addEventListener("click", (e) => {
         const btn = e.target.closest('button, input[type="button"]');
         if (btn) {
@@ -2519,7 +2542,7 @@
           spawnParticles(e.clientX, e.clientY, {
             type: isSakura ? "sakura" : "bat",
             count: 10,
-            velocityScale: 0.75, // Restricted compact splash
+            velocityScale: 0.75,
           });
         }
       });
@@ -2527,16 +2550,15 @@
 
     <script>
       let isFlipped = false;
-      var opponentType = "friend"; // 'friend', 'ai-easy', 'ai-medium', 'online'
+      var opponentType = "friend";
       let selectedSquare = null;
       let validMoves = [];
       let currentPromotionMove = null;
-      let lastMove = null; // Track last made move for placement pop animation
+      let lastMove = null;
 
       var onlineGameId = null;
-      var playerRole = "w"; // 'w' for White/Sakura, 'b' for Black/Bat, 'spectator'
+      var playerRole = "w";
 
-      // Beautiful Advisor Commentaries
       const coachPhrases = {
         start: [
           "SO COZY! SELECT A MODE TO COMMENCE THE STRATEGY MATCH!",
@@ -2596,18 +2618,14 @@
 
       const game = new Chess();
 
-      // PROFILE / AUTH / THEME CONFIGURATIONS
       let userProfile = {
         name: "Cozy Sakura",
-        theme: "kitty", // "kitty" or "batman"
+        theme: "kitty",
         avatar: "kitty_avatar_sakura",
         nameColor: "#FF4D6D",
       };
       let isMultiplayerUnlocked = true;
 
-      // Franchise Characters
-      // Accurate Hello Kitty coordinates inspired by image_9890e2.png
-      // Accurate Pompompurin inspired by image_9890bd.png
       const kittyAvatars = [
         { key: "kitty_avatar_sakura", name: "Hello Kitty", label: "KITTY" },
         { key: "pompompurin", name: "Pompompurin", label: "PURIN" },
@@ -2615,8 +2633,6 @@
         { key: "cinnamoroll", name: "Cinnamoroll", label: "CINNAMO" },
       ];
 
-      // Batman Crossover Characters
-      // Accurate pointy ears Batman layout inspired by image_989085.jpg
       const batmanAvatars = [
         { key: "kitty_avatar_berry", name: "Bat-Kitty", label: "BAT-KITTY" },
         { key: "bat_robin", name: "Bat-Robin", label: "ROBIN" },
@@ -2711,16 +2727,14 @@
         userProfile.theme = selectedTheme;
         userProfile.avatar = selectedAvatarKey;
 
-        // Change name color based on theme
         if (selectedTheme === "batman") {
-          userProfile.nameColor = "#2D2230"; // Batman dark theme color
+          userProfile.nameColor = "#2D2230";
         } else {
-          userProfile.nameColor = "#FF4D6D"; // Pink Hello Kitty theme color
+          userProfile.nameColor = "#FF4D6D";
         }
 
         isMultiplayerUnlocked = true;
 
-        // Unlock online multiplayer card
         const lockedOverlay = document.getElementById("multiplayer-locked-overlay");
         if (lockedOverlay) {
           lockedOverlay.classList.add("hidden");
@@ -2730,23 +2744,19 @@
           unlockedContent.classList.remove("opacity-20", "pointer-events-none");
         }
 
-        // Apply profile cosmetics
         applyProfileVisuals();
-        window.renderPresenceState();
 
         closeUnlockProfileModal();
         showToast(`PROFILE SAVED: ${userProfile.name.toUpperCase()}!`);
       };
 
       function applyProfileVisuals() {
-        // Apply customized colors to player labels
         const labels = document.querySelectorAll(".user-name-label");
         labels.forEach((lbl) => {
           lbl.textContent = userProfile.name;
           lbl.style.color = userProfile.nameColor;
         });
 
-        // Update user profile card avatar depending on role
         const whiteAvatar = document.getElementById("avatar-sakura");
         const whiteAvatarMob = document.getElementById("avatar-sakura-mob");
         const blackAvatar = document.getElementById("avatar-berry");
@@ -2857,12 +2867,10 @@
             }`;
             sqEl.dataset.square = squareCode;
 
-            // Selection highlight (subtle arcade pulse)
             if (selectedSquare === squareCode) {
               sqEl.classList.add("selected-square");
             }
 
-            // Highlight king on active check
             if (
               piece &&
               piece.type === "k" &&
@@ -2880,21 +2888,18 @@
 
             renderCoordinates(sqEl, f, r);
 
-            // Highlighting valid movement squares
             const isMove = validMoves.some((m) => m.to === squareCode);
             if (isMove) {
               const targetMove = validMoves.find((m) => m.to === squareCode);
               const overlay = document.createElement("div");
 
               if (targetMove.flags.includes("c") || game.get(squareCode)) {
-                // Target attack: Semi-transparent heart overlay covering the piece in range
                 overlay.className =
                   "absolute inset-0 flex items-center justify-center pointer-events-none z-30 p-1";
                 overlay.innerHTML = `<svg viewBox="0 0 8 8" class="w-[80%] h-[80%] cozy-indicator" style="opacity: 0.55;" shape-rendering="crispEdges">
                                 <path d="M1 1h2v1H1V1zm4 0h2v1H5V1zM0 2h8v2H0V2zm1 2h6v1H1V4zm1 1h4v1H2V5zm2 1h1v1H4V6z" fill="#FF4D6D" />
                             </svg>`;
               } else {
-                // Cozy Heart move indicator SVG (rendered behind or standard z-index)
                 overlay.className =
                   "absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-2";
                 overlay.innerHTML = `<svg viewBox="0 0 8 8" class="w-3.5 h-3.5 cozy-indicator" shape-rendering="crispEdges">
@@ -2904,7 +2909,6 @@
               sqEl.appendChild(overlay);
             }
 
-            // Render gorgeous piece SVG
             if (piece) {
               const pieceCode = `${piece.color}${piece.type}`;
               const pieceEl = document.createElement("div");
@@ -2912,7 +2916,6 @@
                 "w-[85%] h-[85%] flex items-center justify-center select-none active:scale-105 transition-transform duration-75 z-20 hover:scale-105";
               pieceEl.innerHTML = customSVGs[pieceCode] || "";
 
-              // Active land animation if piece just arrived (tamer movement pop)
               if (lastMove && lastMove.to === squareCode) {
                 pieceEl.classList.add("animate-land");
               } else {
@@ -2930,7 +2933,6 @@
       function renderCoordinates(sqEl, f, r) {
         const filesArr = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
-        // Draw numerical rank labels
         if ((!isFlipped && f === 0) || (isFlipped && f === 7)) {
           const label = document.createElement("span");
           label.className =
@@ -2939,7 +2941,6 @@
           sqEl.appendChild(label);
         }
 
-        // Draw alphabetical file labels
         if ((!isFlipped && r === 0) || (isFlipped && r === 7)) {
           const label = document.createElement("span");
           label.className =
@@ -2965,7 +2966,7 @@
             return;
           }
         } else if (opponentType.startsWith("ai") && game.turn() === "b") {
-          return; // Wait for bot move
+          return;
         }
 
         const piece = game.get(square);
@@ -3019,7 +3020,6 @@
         if (result) {
           lastMove = result;
 
-          // Get coordinates of the destination square to spawn gorgeous particles
           const sqEl = document.querySelector(`[data-square="${moveData.to}"]`);
           let cx = window.innerWidth / 2;
           let cy = window.innerHeight / 2;
@@ -3034,15 +3034,13 @@
             updateCaptures();
             setCoachText("capture");
 
-            // Spawn capture particles based on which side was captured (Sakura / Bat)
             const capturedColor = fromPiece.color === "w" ? "b" : "w";
             spawnParticles(cx, cy, {
               type: capturedColor === "w" ? "sakura" : "bat",
-              count: 18, // Tighter count
-              velocityScale: 1.1, // Tighter, cute localized burst
+              count: 18,
+              velocityScale: 1.1,
             });
 
-            // Calmed capture shake animation
             const boardContainer = document.getElementById("board-container");
             if (boardContainer) {
               boardContainer.classList.add("animate-shake");
@@ -3051,7 +3049,6 @@
               }, 300);
             }
 
-            // Emit subtle ambient particles around board edges
             const bRect = boardContainer.getBoundingClientRect();
             for (let k = 0; k < 6; k++) {
               const edgeX = bRect.left + Math.random() * bRect.width;
@@ -3066,10 +3063,9 @@
             sfx.playStep();
             setCoachText("step");
 
-            // Cozy, localized landing sparkle particles
             spawnParticles(cx, cy, {
               type: fromPiece.color === "w" ? "sakura" : "bat",
-              count: 6, // Charming compact burst
+              count: 6,
               velocityScale: 0.6,
             });
           }
@@ -3183,7 +3179,6 @@
         document.getElementById("room-info-mob").classList.add("hidden");
         document.getElementById("room-code-input").value = "";
 
-        window.renderPresenceState();
         setCoachText("start");
       }
 
@@ -3231,9 +3226,7 @@
           playerRole = "w";
           latestOnlinePayload = {
             whitePlayer: window.getCurrentUserId(),
-            whitePresenceAt: Date.now(),
             blackPlayer: "",
-            blackPresenceAt: 0,
           };
 
           document.getElementById("room-code-display").textContent =
@@ -3253,7 +3246,7 @@
           resetLocalState();
           listenToGameDoc(uniqueRoomId, syncOnlineState);
           applyProfileVisuals();
-          window.renderPresenceState();
+
           window.startOnlinePresenceHeartbeat();
           startTimers();
         } catch (err) {
@@ -3301,9 +3294,7 @@
           playerRole = "b";
           latestOnlinePayload = {
             whitePlayer: null,
-            whitePresenceAt: 0,
             blackPlayer: window.getCurrentUserId(),
-            blackPresenceAt: Date.now(),
           };
 
           document.getElementById("room-code-display").textContent = codeInput;
@@ -3324,7 +3315,7 @@
           resetLocalState();
           listenToGameDoc(codeInput, syncOnlineState);
           applyProfileVisuals();
-          window.renderPresenceState();
+
           window.startOnlinePresenceHeartbeat();
           startTimers();
         } catch (err) {
@@ -3365,7 +3356,6 @@
           }
         }
 
-        // Sync other player details dynamically
         if (payload.blackPlayer) {
           const bName = payload.blackPlayerName || "Cozy Bat-Kitty";
           const bTheme = payload.blackPlayerTheme || "batman";
@@ -3378,7 +3368,6 @@
               bTheme === "batman" ? "#2D2230" : "#FF4D6D";
           }
 
-          // Render other player's avatar
           const avGrid = rawPixelGrids[bAvatar] || uiGrids[bAvatar];
           const avSvg = parseGridToSVG(avGrid);
           const berryEl = document.getElementById("avatar-berry");
@@ -3416,7 +3405,6 @@
         updateTimerDisplay("white", whiteTime);
         updateTimerDisplay("black", blackTime);
 
-        window.renderPresenceState(payload);
         updateStatus();
         updateCaptures();
         renderBoard();
@@ -3499,11 +3487,77 @@
     </script>
 
     <script>
+      window.undoMove = function() {
+        if (opponentType === "online") {
+           highlightLastMove();
+           return;
+        }
+
+        sfx.playSelection();
+        const move = game.undo();
+        
+        if (move) {
+           if (opponentType.startsWith("ai-") && game.turn() === "b") {
+              game.undo();
+           }
+           renderBoard();
+           updateStatus();
+           updateCaptures();
+        } else {
+           showToast("NOTHING TO UNDO");
+        }
+      };
+
+      function highlightLastMove() {
+        if (!lastMove) {
+          showToast("NO MOVES YET");
+          return;
+        }
+        sfx.playSelection();
+
+        // Clear previous annotations
+        document.querySelectorAll('.last-move-annotation').forEach(el => el.remove());
+
+        const fromEl = document.querySelector(`[data-square="${lastMove.from}"]`);
+        const toEl = document.querySelector(`[data-square="${lastMove.to}"]`);
+
+        // Use a cute pixelated icon for annotation
+        const svgHTML = parseGridToSVG(uiGrids.bow, cozyPalette, "w-full h-full");
+
+        if (fromEl) {
+          const fromAnn = document.createElement("div");
+          fromAnn.className = "last-move-annotation absolute inset-0 bg-[#FFCCD5]/50 pointer-events-none z-30 animate-fade-in";
+          const iconContainer = document.createElement("div");
+          iconContainer.className = "absolute bottom-0.5 left-0.5 w-3 h-3 opacity-60 drop-shadow-sm";
+          iconContainer.innerHTML = svgHTML;
+          fromAnn.appendChild(iconContainer);
+          fromEl.appendChild(fromAnn);
+        }
+
+        if (toEl) {
+          const toAnn = document.createElement("div");
+          toAnn.className = "last-move-annotation absolute inset-0 bg-[#FF85A1]/50 pointer-events-none z-30 animate-fade-in border-2 border-white border-dashed";
+          const iconContainer = document.createElement("div");
+          iconContainer.className = "absolute bottom-0.5 right-0.5 w-4 h-4 drop-shadow-md animate-pulse";
+          iconContainer.innerHTML = svgHTML;
+          toAnn.appendChild(iconContainer);
+          toEl.appendChild(toAnn);
+          
+          const rect = toEl.getBoundingClientRect();
+          spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, { type: "sakura", count: 8, velocityScale: 0.5 });
+        }
+
+        setTimeout(() => {
+          document.querySelectorAll('.last-move-annotation').forEach(el => el.classList.add('opacity-0', 'transition-opacity', 'duration-500'));
+          setTimeout(() => {
+            document.querySelectorAll('.last-move-annotation').forEach(el => el.remove());
+          }, 500);
+        }, 2500);
+      }
+
       function updateStatus() {
         const banner = document.getElementById("turn-banner");
         const statusText = document.getElementById("turn-status-text");
-
-        window.renderPresenceState();
 
         if (game.turn() === "w") {
           banner.className =
@@ -3647,8 +3701,14 @@
             setCoachText("victoryBerry");
             launchCozyConfetti();
           }
+        } else if (game.in_threefold_repetition()) {
+          desc = "DRAW BY REPETITION! (Position repeated 3 times).";
+          setCoachText("draw");
         } else if (game.in_stalemate()) {
           desc = "STALEMATE! DRAW CONCLUDED.";
+          setCoachText("draw");
+        } else if (game.in_draw()) {
+          desc = "DRAW CONCLUDED.";
           setCoachText("draw");
         }
 
@@ -3684,6 +3744,20 @@
             requestAnimationFrame(frame);
           }
         })();
+      }
+
+      function startGameCommon() {
+        const desktopUndo = document.getElementById("btnUndoDesktop");
+        const mobUndo = document.getElementById("btnUndoMob");
+        if (opponentType === "online") {
+           if (desktopUndo) desktopUndo.textContent = "LAST MOVE";
+           if (mobUndo) mobUndo.textContent = "LAST MOVE";
+        } else {
+           if (desktopUndo) desktopUndo.textContent = "UNDO MOVE";
+           if (mobUndo) mobUndo.textContent = "UNDO";
+        }
+
+        document.getElementById("start-screen").classList.add("hidden");
       }
 
       function closeGameOverModal() {
@@ -3802,7 +3876,7 @@
       window.onload = function () {
         initStaticAssets();
         setCoachText("start");
-        window.renderPresenceState();
+
       };
     </script>
   </body>
