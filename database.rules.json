@@ -1,0 +1,20 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "artifacts": {
+      "$appId": {
+        "public": {
+          "data": {
+            "games": {
+              "$gameId": {
+                ".read": true,
+                ".write": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

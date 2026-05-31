@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hello Kitty Chess - Cute Retro Arcade</title>
+    <!-- Tailwind CSS for modern layout design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cozy Pixelated Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <!-- Chess.js for pure logic and chess rule calculations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <!-- Canvas Confetti for winning celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Beautiful pixelated Hello Kitty bow favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <style>
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #FFF0F3;
+            /* Cozy pink checkerboard patterns */
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' shape-rendering='crispEdges'><rect x='0' y='0' width='12' height='12' fill='%23FFE5EC'/><rect x='12' y='12' width='12' height='12' fill='%23FFE5EC'/></svg>");
+            background-size: 48px 48px;
+            image-rendering: pixelated;
+        }
+
+        .vt-font {
+            font-family: 'VT323', monospace;
+        }
+
+        .cozy-border {
+            border: 4px solid #4A1E2F;
+            border-radius: 16px;
+        }
+
+        .cozy-card {
+            background-color: #FFFDF9;
+            box-shadow: 0 8px 0px #FFCCD5, 0 12px 24px rgba(74, 30, 47, 0.08);
+            border: 4px solid #4A1E2F;
+            border-radius: 20px;
+        }
+
+        .cozy-btn-sakura {
+            font-family: 'Press Start 2P', monospace;
+            border: 4px solid #4A1E2F;
+            border-radius: 12px;
+            background-color: #FFB7C5;
+            box-shadow: inset -4px -4px 0px 0px #FF99AC, inset 4px 4px 0px 0px #FFF0F3, 0px 6px 0px #4A1E2F;
+            text-shadow: 2px 2px 0px #C9184A;
+            transition: all 0.08s ease;
+        }
+
+        .cozy-btn-sakura:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: inset -4px -4px 0px 0px #FF99AC, inset 4px 4px 0px 0px #FFF0F3, 0px 2px 0px #4A1E2F;
+        }
+
+        .cozy-btn-bat {
+            font-family: 'Press Start 2P', monospace;
+            border: 4px solid #4A1E2F;
+            border-radius: 12px;
+            background-color: #5C4A60;
+            box-shadow: inset -4px -4px 0px 0px #433347, inset 4px 4px 0px 0px #8E7796, 0px 6px 0px #4A1E2F;
+            text-shadow: 2px 2px 0px #2A192E;
+            transition: all 0.08s ease;
+        }
+
+        .cozy-btn-bat:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: inset -4px -4px 0px 0px #433347, inset 4px 4px 0px 0px #8E7796, 0px 2px 0px #4A1E2F;
+        }
+
+        /* Chess Board Styles */
+        .dark-square {
+            background-color: #FFC0CB;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect x='0' y='0' width='4' height='4' fill='%23FFA6B9'/><rect x='4' y='4' width='4' height='4' fill='%23FFA6B9'/></svg>");
+            background-size: 16px 16px;
+        }
+
+        .light-square {
+            background-color: #FFFDF9;
+        }
+
+        /* Subtle arcade retro blink selection */
+        @keyframes subtle-flash {
+            0% { background-color: #FFF0F3; box-shadow: inset 0 0 0 4px #FF4D6D; }
+            100% { background-color: #FFE5EC; box-shadow: inset 0 0 0 4px #FF85A1; }
+        }
+
+        .selected-square {
+            animation: subtle-flash 0.4s infinite alternate steps(4) !important;
+        }
+
+        .selected-square svg, .selected-square img {
+            animation: retro-pulse 0.4s infinite alternate steps(4);
+        }
+
+        @keyframes retro-pulse {
+            0% { opacity: 0.7; transform: scale(0.95); }
+            100% { opacity: 1.0; transform: scale(1.0); }
+        }
+
+        /* Less intense landing bounce */
+        @keyframes land-pop {
+            0% { transform: scale(0.92); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-land {
+            animation: land-pop 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        /* Slightly more in-range retro capture shaking */
+        @keyframes shake-board {
+            0%, 100% { transform: translate(0, 0); }
+            15%, 85% { transform: translate(-3.5px, 2.5px) rotate(-0.5deg); }
+            30%, 70% { transform: translate(4px, -3px) rotate(0.5deg); }
+            50% { transform: translate(-2px, 1.5px); }
+        }
+        .animate-shake {
+            animation: shake-board 0.35s ease-in-out;
+        }
+
+        @keyframes soft-bounce {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.04) translateY(-2px); }
+        }
+
+        .piece-bounce {
+            animation: soft-bounce 0.25s ease-out;
+        }
+
+        @keyframes bat-flutter {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-2px) rotate(1deg); }
+        }
+
+        .bat-float {
+            animation: bat-flutter 2.2s infinite ease-in-out;
+        }
+
+        @keyframes cozy-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.85; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .cozy-indicator {
+            image-rendering: pixelated;
+            animation: cozy-pulse 1.4s infinite steps(4);
+        }
+
+        .cozy-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .cozy-scroll::-webkit-scrollbar-track {
+            background: #FFF5F7;
+            border-left: 2px solid #4A1E2F;
+        }
+        .cozy-scroll::-webkit-scrollbar-thumb {
+            background: #FFB7C5;
+            border: 2px solid #4A1E2F;
+            border-radius: 4px;
+        }
+
+        .coord-label {
+            font-size: 7px;
+            color: #4A1E2F;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body id="game-body" class="min-h-screen flex flex-col items-center justify-between p-1 sm:p-4 md:p-6 overflow-x-hidden text-[#4A1E2F]">
+
+    <!-- FIXED LAYER FOR GORGEOUS COZY CANVAS PARTICLES -->
+    <canvas id="particle-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <header class="w-full max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 mb-1 sm:mb-4 bg-[#FFFDF9] cozy-border p-1.5 sm:p-3 shadow-[0_6px_0px_#FFCCD5]">
+        <div class="flex items-center gap-3">
+            <div id="header-logo-container" class="w-8 h-8 sm:w-12 sm:h-12 bg-[#FFFDF9] border-4 border-[#4A1E2F] rounded-xl flex items-center justify-center p-1 relative bat-float">
+                <!-- Svg loaded procedurally -->
+            </div>
+
+            <div>
+                <h1 class="text-[9px] sm:text-xs md:text-sm font-bold tracking-tight text-[#FF4D6D] leading-none uppercase">
+                    Hello Kitty Chess
+                </h1>
+                <p class="text-[7px] sm:text-[9px] font-bold text-[#FF99AC] uppercase tracking-wider mt-1">The Ultimate Cute Arcade</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-center">
+            <button id="btnSound" class="cozy-btn-sakura text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5">
+                <span id="sound-icon-holder" class="w-3.5 h-3.5 inline-block"></span> <span id="soundText">SFX: ON</span>
+            </button>
+            <button id="btnMusic" class="cozy-btn-sakura text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5">
+                <span id="music-icon-holder" class="w-3.5 h-3.5 inline-block"></span> <span id="musicText">BGM: OFF</span>
+            </button>
+            <button id="btnStatus" class="cozy-btn-bat text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5 pointer-events-none">
+                <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block animate-ping"></span> <span id="syncText">CONNECTING</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="w-full max-w-5xl mb-1 sm:mb-4 bg-[#FFFDF9] cozy-border p-1 sm:p-2 flex items-center gap-2 sm:gap-3 shadow-[0_4px_0px_#FFCCD5] relative">
+        <div id="coach-avatar-container" class="w-7 h-7 sm:w-10 sm:h-10 border-4 border-[#4A1E2F] rounded-xl bg-white flex-shrink-0 bat-float hidden sm:block">
+            <!-- Injected on startup -->
+        </div>
+        <div class="relative flex-grow bg-white border-2 border-[#4A1E2F] rounded-lg p-1 sm:p-2">
+            <!-- Retro bubble pointer -->
+            <div class="absolute top-1/2 -left-2 w-2 h-2 bg-white border-l-2 border-b-2 border-[#4A1E2F] transform -translate-y-1/2 rotate-45 hidden sm:block"></div>
+            <div class="text-[7px] sm:text-[10px] font-bold text-[#FF4D6D] leading-relaxed relative z-10">
+                COZY COACH: <span id="coach-bubble-text" class="text-[#4A1E2F] uppercase">Select Offline vs Bot or join an online room!</span>
+            </div>
+        </div>
+    </div>
+
+    <main class="w-full max-w-6xl flex flex-col items-center justify-center flex-grow">
+        
+        <!-- LOBBY SCREEN -->
+        <div id="lobby-screen" class="w-full max-w-xl bg-[#FFFDF9] cozy-border p-3 sm:p-5 shadow-[0_8px_0px_#FFCCD5] flex flex-col gap-3 sm:gap-4 text-center">
+            <h2 class="text-[10px] sm:text-xs font-bold text-[#FF4D6D]">CHOOSE COZY GAMEPLAY</h2>
+            <p class="text-[8px] sm:text-[10px] text-[#4A1E2F] max-w-md mx-auto leading-relaxed uppercase">
+                Enjoy offline cozy strategy versus Bot, or host/join an online game room!
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-1">
+                <!-- Offline Play Card -->
+                <div class="bg-[#FFF5F7] border-4 border-[#4A1E2F] rounded-xl p-2.5 sm:p-3 flex flex-col justify-between gap-3">
+                    <div>
+                        <div id="offline-icon" class="w-10 h-10 sm:w-12 mx-auto mb-1"></div>
+                        <h3 class="text-[9px] sm:text-[10px] font-bold text-[#FF4D6D] uppercase">Offline Bot</h3>
+                        <p class="text-[8px] sm:text-[9px] text-gray-600 mt-1 leading-relaxed uppercase">Play cute offline match versus AI.</p>
+                    </div>
+                    <div class="flex flex-col gap-2 mt-1 sm:mt-2">
+                        <button onclick="startOffline('ai-easy')" class="cozy-btn-sakura text-[8px] sm:text-[9px] py-2 text-white font-bold">
+                            EASY BOT
+                        </button>
+                        <button onclick="startOffline('ai-medium')" class="cozy-btn-bat text-[8px] sm:text-[9px] py-2 text-white font-bold">
+                            MEDIUM BOT
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Online Multiplayer Card (With cute authentic unlock shield) -->
+                <div class="bg-[#F3EEF5] border-4 border-[#4A1E2F] rounded-xl p-2.5 sm:p-3 flex flex-col justify-between gap-3 relative overflow-hidden min-h-[190px]">
+                    <!-- Padlocked Multiplayer Mask -->
+                    <div id="multiplayer-locked-overlay" class="absolute inset-0 bg-[#4A1E2F]/15 backdrop-blur-[2px] z-30 flex flex-col items-center justify-center p-3 text-center">
+                        <div id="lock-icon-container" class="w-10 h-10 mb-1 bat-float"></div>
+                        <h3 class="text-[8px] sm:text-[9px] font-bold text-[#4A1E2F] uppercase mb-0.5">Multiplayer Locked</h3>
+                        <p class="text-[6px] sm:text-[7px] text-[#4A1E2F]/80 font-bold mb-2 uppercase leading-snug max-w-[170px]">Customize your profile avatar to unlock online matches!</p>
+                        <button onclick="openUnlockProfileModal()" class="cozy-btn-sakura text-[7px] sm:text-[8px] py-1.5 px-3.5 text-white font-bold animate-pulse">
+                            UNLOCK NOW
+                        </button>
+                    </div>
+
+                    <!-- Genuine Multiplayer Card Contents -->
+                    <div id="multiplayer-unlocked-content" class="flex flex-col justify-between h-full gap-3 opacity-20 pointer-events-none transition-all duration-300">
+                        <div>
+                            <div id="online-icon" class="w-10 h-10 sm:w-12 mx-auto mb-1"></div>
+                            <h3 class="text-[9px] sm:text-[10px] font-bold text-[#5C4A60] uppercase">Live Match</h3>
+                            <p class="text-[8px] sm:text-[9px] text-gray-600 mt-1 leading-relaxed uppercase">Cozy real-time turns sync.</p>
+                        </div>
+                        <div class="flex flex-col gap-2 mt-1 sm:mt-2">
+                            <button onclick="createNewOnlineRoom()" class="cozy-btn-sakura text-[8px] sm:text-[9px] py-2 text-white font-bold">
+                                CREATE ROOM
+                            </button>
+                            
+                            <div class="flex gap-1 mt-1">
+                                <input id="room-code-input" type="text" placeholder="CODE" maxlength="6" class="w-1/2 p-1.5 border-2 border-[#4A1E2F] rounded-lg text-center font-mono text-[9px] sm:text-xs text-[#4A1E2F] bg-white uppercase">
+                                <button onclick="joinOnlineRoom()" class="w-1/2 cozy-btn-bat text-[8px] sm:text-[9px] py-1.5 text-white font-bold">
+                                    JOIN
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLAYING GAME SCREEN -->
+        <div id="game-screen" class="w-full flex flex-col lg:flex-row gap-2 sm:gap-4 items-center justify-center hidden">
+            
+            <!-- Left Side: Hello Kitty Player Card and controls (HIDDEN ON MOBILE) -->
+            <div class="hidden lg:flex w-full lg:w-1/4 flex-col gap-3 self-stretch justify-between order-2 lg:order-1">
+                <div class="bg-[#FFFDF9] cozy-border p-3 shadow-[0_4px_0px_#FFCCD5] flex flex-col gap-2 relative">
+                    <div class="flex items-center gap-3">
+                        <div id="avatar-sakura" class="w-10 h-10 bg-white border-4 border-[#4A1E2F] p-1 rounded-xl flex items-center justify-center"></div>
+                        <div>
+                            <h3 class="text-[10px] font-bold text-[#FF85A1] user-name-label transition-colors">Team Sakura</h3>
+                            <p class="text-[9px] text-[#4A1E2F] font-semibold">White Pieces</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-bold text-[#FF85A1] tracking-wider">CAPTURED BAT-KITTIES:</p>
+                        <div id="captured-black" class="flex flex-wrap gap-1 min-h-[36px] bg-[#FFF5F7] border-2 border-[#4A1E2F] rounded-lg p-1.5 mt-1">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center bg-[#FFF5F7] border-2 border-[#4A1E2F] rounded-lg p-1.5">
+                        <span class="text-[10px] font-bold text-[#4A1E2F]">TIMER</span>
+                        <span id="timer-white" class="text-sm font-bold text-[#FF4D6D] font-mono vt-font">10:00</span>
+                    </div>
+                </div>
+
+                <!-- Match Code Panel for Multiplayer connectivity -->
+                <div id="room-info-card" class="bg-[#FFFDF9] cozy-border p-3 shadow-[0_4px_0px_#FFCCD5] flex flex-col gap-1.5 items-center justify-center hidden">
+                    <h3 class="text-[9px] font-bold text-[#FF4D6D]">ROOM CODE</h3>
+                    <div class="flex items-center gap-2">
+                        <span id="room-code-display" class="font-mono text-sm font-bold text-[#4A1E2F] bg-[#FFF5F7] px-2 py-0.5 border-2 border-[#4A1E2F] rounded-lg">------</span>
+                        <button onclick="copyRoomCode()" class="cozy-btn-sakura text-[8px] py-1 px-2 text-white font-bold">COPY</button>
+                    </div>
+                    <p class="text-[8px] text-[#FF85A1] font-bold text-center uppercase">Share code with your partner!</p>
+                </div>
+
+                <div class="bg-[#FFFDF9] cozy-border p-3 shadow-[0_4px_0px_#FFCCD5] flex flex-col gap-1">
+                    <h3 class="text-[9px] font-bold text-[#FF4D6D] text-center">ROLE</h3>
+                    <p id="role-display-text" class="text-[9px] text-[#4A1E2F] text-center font-bold uppercase">SPECTATOR</p>
+                </div>
+            </div>
+
+            <!-- Center Panel: The Game Board Area (Focused primarily on mobile) -->
+            <div class="w-full max-w-[420px] sm:max-w-[450px] aspect-square flex flex-col items-center justify-center order-1 lg:order-2 px-1 sm:px-0">
+                
+                <!-- MOBILE-ONLY COMPACT HUD (TIMERS & AVATARS) -->
+                <div class="flex lg:hidden w-full justify-between items-center bg-[#FFFDF9] cozy-border p-1.5 mb-1.5 shadow-[0_3px_0px_#FFCCD5] gap-1.5">
+                    <!-- Team Sakura Info (White) -->
+                    <div class="flex items-center gap-1.5 flex-1">
+                        <div id="avatar-sakura-mob" class="w-7 h-7 bg-white border-2 border-[#4A1E2F] rounded-lg p-0.5 flex items-center justify-center flex-shrink-0"></div>
+                        <div class="flex flex-col overflow-hidden">
+                            <span id="timer-white-mob" class="text-xs font-bold text-[#FF4D6D] font-mono vt-font leading-none">10:00</span>
+                            <div id="captured-black-mob" class="flex flex-wrap gap-0.5 min-h-[10px] mt-0.5"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Room Info block if online -->
+                    <div id="room-info-mob" class="text-center px-1 border-x-2 border-[#4A1E2F]/15 hidden flex-shrink-0">
+                        <span class="text-[5px] font-bold text-[#FF85A1] block tracking-tighter">ROOM CODE</span>
+                        <div class="flex items-center gap-1 mt-0.5">
+                            <span id="room-code-display-mob" class="font-mono text-[8px] font-bold text-[#4A1E2F] bg-[#FFF5F7] px-1 rounded border border-[#4A1E2F]">------</span>
+                            <button onclick="copyRoomCode()" class="bg-[#FFB7C5] border border-[#4A1E2F] text-[5px] px-1 py-0.5 rounded text-white font-bold">COPY</button>
+                        </div>
+                    </div>
+
+                    <!-- Team Bat-Rose Info (Black) -->
+                    <div class="flex items-center gap-1.5 flex-1 justify-end">
+                        <div class="flex flex-col items-end overflow-hidden">
+                            <span id="timer-black-mob" class="text-xs font-bold text-[#FF4D6D] font-mono vt-font leading-none">10:00</span>
+                            <div id="captured-white-mob" class="flex flex-wrap gap-0.5 min-h-[10px] mt-0.5 justify-end"></div>
+                        </div>
+                        <div id="avatar-berry-mob" class="w-7 h-7 bg-white border-2 border-[#4A1E2F] rounded-lg p-0.5 flex items-center justify-center flex-shrink-0"></div>
+                    </div>
+                </div>
+
+                <!-- Turn Indicator Banner -->
+                <div id="turn-banner" class="w-full bg-[#FFFDF9] cozy-border py-1 px-2 mb-1.5 text-center text-[7px] sm:text-[10px] font-bold text-[#FF4D6D] shadow-[0_3px_0px_#FFCCD5] flex items-center justify-center gap-1.5">
+                    <span id="banner-bow-left" class="w-3.5 h-3.5 sm:w-5 sm:h-5 inline-block"></span>
+                    <span id="turn-status-text">COZY START...</span>
+                    <span id="banner-bow-right" class="w-3.5 h-3.5 sm:w-5 sm:h-5 inline-block"></span>
+                </div>
+
+                <!-- Chessboard Container Frame -->
+                <div id="board-container" class="w-full aspect-square bg-[#FF85A1] p-1.5 cozy-border shadow-[0_6px_0px_#4A1E2F] relative">
+                    <div id="board" class="w-full h-full border-4 border-[#4A1E2F] rounded-lg grid grid-cols-8 grid-rows-8 select-none relative overflow-hidden">
+                        <!-- Square fields loaded programmatically -->
+                    </div>
+                </div>
+
+                <!-- MOBILE-ONLY COMPACT BUTTONS DECK -->
+                <div class="flex lg:hidden w-full gap-2 mt-2">
+                    <button onclick="leaveRoomAndLobby()" class="flex-1 cozy-btn-bat text-[7px] py-1.5 text-white font-bold uppercase">
+                        LEAVE
+                    </button>
+                    <button onclick="flipBoard()" class="flex-1 cozy-btn-sakura text-[7px] py-1.5 text-white font-bold uppercase">
+                        FLIP VIEW
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Bat-Kitty Card and Moves Log (HIDDEN ON MOBILE) -->
+            <div class="hidden lg:flex w-full lg:w-1/4 flex-col gap-3 self-stretch justify-between order-3">
+                <div class="bg-[#FFFDF9] cozy-border p-3 shadow-[0_4px_0px_#FFCCD5] flex flex-col gap-2 relative">
+                    <div class="flex items-center gap-3">
+                        <div id="avatar-berry" class="w-10 h-10 bg-white border-4 border-[#4A1E2F] p-1 rounded-xl flex items-center justify-center"></div>
+                        <div>
+                            <h3 class="text-[10px] font-bold text-[#5C4A60] user-name-label-black">Team Bat-Rose</h3>
+                            <p class="text-[9px] text-[#4A1E2F] font-semibold" id="black-role-subtitle">Black Pieces</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-bold text-[#5C4A60] tracking-wider">CAPTURED SAKURAS:</p>
+                        <div id="captured-white" class="flex flex-wrap gap-1 min-h-[36px] bg-[#FFF5F7] border-2 border-[#4A1E2F] rounded-lg p-1.5 mt-1">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center bg-[#FFF5F7] border-2 border-[#4A1E2F] rounded-lg p-1.5">
+                        <span class="text-[10px] font-bold text-[#4A1E2F]">TIMER</span>
+                        <span id="timer-black" class="text-sm font-bold text-[#FF4D6D] font-mono vt-font">10:00</span>
+                    </div>
+                </div>
+
+                <!-- Cozy Match logs -->
+                <div class="bg-[#FFFDF9] cozy-border p-3 shadow-[0_4px_0px_#FFCCD5] flex-grow flex flex-col gap-1.5 min-h-[110px] lg:h-auto">
+                    <div class="flex items-center justify-between border-b-4 border-[#4A1E2F] pb-1.5">
+                        <h3 class="text-[9px] font-bold text-[#FF4D6D]">LOGS</h3>
+                        <span id="move-counter" class="text-[8px] font-bold bg-[#FF85A1] text-white px-1.5 py-0.5 border-2 border-[#4A1E2F] rounded-lg">0 MOVES</span>
+                    </div>
+                    <div id="move-history-container" class="flex-grow overflow-y-auto text-xs vt-font text-[#4A1E2F] flex flex-col gap-1 pr-1 max-h-[110px] lg:max-h-[160px] cozy-scroll">
+                        <div class="text-[#FF85A1] text-[10px] text-center my-auto font-mono">WAITING...</div>
+                    </div>
+                </div>
+
+                <!-- Match Operations -->
+                <div class="flex flex-col gap-1.5">
+                    <button onclick="leaveRoomAndLobby()" class="cozy-btn-bat text-[9px] py-2 text-white font-bold">
+                        LEAVE MATCH / MENU
+                    </button>
+                    <button onclick="flipBoard()" class="cozy-btn-sakura text-[9px] py-2 text-white font-bold">
+                        FLIP VIEW
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- PROFILE UNLOCK MODAL -->
+    <div id="profile-unlock-modal" class="fixed inset-0 bg-[#4A1E2F]/60 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in">
+        <div class="bg-[#FFFDF9] border-8 border-double border-[#4A1E2F] p-4 sm:p-5 max-w-sm w-full text-center shadow-[0_8px_0px_#FF85A1] rounded-2xl max-h-[95vh] overflow-y-auto cozy-scroll">
+            <h2 class="text-[10px] sm:text-xs font-bold text-[#FF4D6D] mb-1.5 uppercase">Unlock Multiplayer</h2>
+            <p class="text-[7px] sm:text-[8px] text-[#4A1E2F] font-bold mb-3 uppercase">Enter nickname & choose your cozy side!</p>
+            
+            <!-- Nickname input -->
+            <div class="mb-3 text-left">
+                <label class="block text-[7px] sm:text-[8px] font-bold text-[#4A1E2F] mb-1 uppercase">YOUR NICKNAME:</label>
+                <input id="profile-name-input" type="text" placeholder="COZY SAKURA" maxlength="11" class="w-full p-1.5 border-4 border-[#4A1E2F] rounded-xl font-mono text-[9px] sm:text-xs text-[#4A1E2F] bg-white text-center focus:outline-none">
+            </div>
+
+            <!-- Theme Toggle / Selector -->
+            <div class="mb-3 text-left">
+                <label class="block text-[7px] sm:text-[8px] font-bold text-[#4A1E2F] mb-1 uppercase font-mono">CHOOSE THEME SIDE:</label>
+                <div class="flex border-4 border-[#4A1E2F] rounded-xl overflow-hidden font-mono text-[6px] sm:text-[7px]">
+                    <button id="toggle-theme-kitty" onclick="selectProfileTheme('kitty')" class="flex-1 py-1.5 font-bold bg-[#FFB7C5] text-[#4A1E2F] border-r-4 border-[#4A1E2F] uppercase transition-colors">
+                        Hello Kitty
+                    </button>
+                    <button id="toggle-theme-batman" onclick="selectProfileTheme('batman')" class="flex-1 py-1.5 font-bold bg-[#FFFDF9] text-[#4A1E2F] uppercase transition-colors">
+                        Batman Crossover
+                    </button>
+                </div>
+            </div>
+
+            <!-- Clickable Grid Selection -->
+            <div class="mb-4 text-left">
+                <label class="block text-[7px] sm:text-[8px] font-bold text-[#4A1E2F] mb-1 uppercase">SELECT CUTE AVATAR:</label>
+                <div id="avatar-grid-selection" class="grid grid-cols-4 gap-1.5 bg-[#FFF5F7] border-4 border-[#4A1E2F] rounded-xl p-1.5 max-h-[110px] overflow-y-auto cozy-scroll">
+                    <!-- Loaded dynamically in JS based on theme select -->
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="saveAndUnlockProfile()" class="flex-grow cozy-btn-sakura text-[8px] sm:text-[9px] py-2 text-white font-bold">
+                    SAVE & UNLOCK
+                </button>
+                <button onclick="closeUnlockProfileModal()" class="cozy-btn-bat text-[8px] sm:text-[9px] py-2 px-3 text-white font-bold">
+                    CLOSE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROMOTION SELECTION MODAL -->
+    <div id="promotion-modal" class="fixed inset-0 bg-[#4A1E2F]/60 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in">
+        <div class="bg-[#FFFDF9] border-8 border-double border-[#4A1E2F] p-5 max-w-sm w-full text-center shadow-[0_8px_0px_#FF85A1] rounded-2xl">
+            <h2 class="text-xs font-bold text-[#FF4D6D] mb-2 uppercase">Pawn Promotion!</h2>
+            <p class="text-[10px] text-[#4A1E2F] font-bold mb-3 uppercase">Choose their cozy cowl:</p>
+            <div class="grid grid-cols-4 gap-2" id="promotion-choices">
+                <!-- Loaded programmatically with beautiful large readable labels -->
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER NOTIFICATION MODAL -->
+    <div id="game-over-modal" class="fixed inset-0 bg-[#4A1E2F]/80 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in">
+        <div class="bg-[#FFFDF9] border-8 border-double border-[#4A1E2F] p-6 max-w-md w-full text-center shadow-[0_12px_0px_#FF85A1] rounded-2xl relative">
+            <div id="gameover-crown-container" class="w-12 h-12 mx-auto mb-3"></div>
+            <h2 id="modal-title" class="text-sm font-bold text-[#FF4D6D] mt-1 mb-2 uppercase">Checkmate!</h2>
+            <p id="modal-desc" class="text-[10px] text-[#4A1E2F] font-bold mb-4 uppercase">Team Sakura won the adorable match!</p>
+            <div class="flex flex-col gap-2">
+                <button onclick="closeGameOverModal(); handleResetRequest();" class="cozy-btn-sakura text-xs text-white font-bold py-3">
+                    PLAY AGAIN!
+                </button>
+                <button onclick="closeGameOverModal()" class="text-[#FF85A1] hover:text-[#FF4D6D] font-bold text-[9px] mt-1.5 uppercase">
+                    VIEW BOARD STATUS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="cozy-toast" class="fixed bottom-6 right-6 bg-[#FFFDF9] cozy-border px-4 py-2.5 shadow-[0_4px_0px_#4A1E2F] hidden z-50 max-w-sm flex items-center gap-3">
+        <span class="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span>
+        <span id="toast-text" class="text-[9px] font-bold text-[#4A1E2F] uppercase">COZY EVENT OCCURRED!</span>
+    </div>
+
+    <footer class="w-full text-center py-3 text-[9px] font-bold text-[#FF85A1] mt-4 border-t-4 border-[#4A1E2F]/10 bg-[#FFFDF9] cozy-border shadow-[0_-4px_0px_#FFE5EC] hidden sm:block">
+        COZY HELLO KITTY CHESS LABORATORY 2026.
+    </footer>
+
+    <script>
+        class RetroSoundChip {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                this.musicEnabled = false;
+                this.bgmTimer = null;
+                
+                // Track 1: Sakura Lullaby (Soft & warm major sequence)
+                this.track1 = [
+                    [329.63, 0.8], [392.00, 0.8], [523.25, 1.2],
+                    [392.00, 0.8], [440.00, 0.8], [523.25, 1.2],
+                    [523.25, 0.4], [587.33, 0.4], [659.25, 1.2],
+                    [587.33, 0.8], [523.25, 0.8], [392.00, 1.6],
+                    [440.00, 0.8], [349.23, 0.8], [261.63, 1.6]
+                ];
+
+                // Track 2: Bat-Cave beat (Cooler minor-pentatonic rhythm)
+                this.track2 = [
+                    [220.00, 0.4], [261.63, 0.4], [329.63, 0.4], [220.00, 0.4],
+                    [293.66, 0.8], [220.00, 0.4], [329.63, 0.8], [220.00, 0.8],
+                    [261.63, 0.4], [293.66, 0.4], [329.63, 1.2], [392.00, 0.4],
+                    [329.63, 0.4], [293.66, 0.4], [220.00, 1.2]
+                ];
+
+                // Track 3: Cozy Garden (Dreamy, arpeggiated slow chords)
+                this.track3 = [
+                    [261.63, 1.2], [329.63, 1.2], [392.00, 1.2], [329.63, 1.2],
+                    [440.00, 1.2], [349.23, 1.2], [523.25, 1.2], [440.00, 1.2],
+                    [293.66, 1.2], [349.23, 1.2], [440.00, 1.2], [349.23, 1.2],
+                    [392.00, 1.2], [329.63, 1.2], [261.63, 2.4]
+                ];
+
+                this.currentTrackList = this.track1;
+                this.bgmState = 0; // 0: Off, 1: Track 1, 2: Track 2, 3: Track 3
+                this.currentNoteIndex = 0;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playBeep(freq, type = 'sine', duration = 0.15, gainVal = 0.05) {
+                if (!this.enabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1800, now);
+                
+                gain.gain.setValueAtTime(gainVal, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + duration);
+            }
+
+            playClick() {
+                this.playBeep(480, 'sine', 0.06, 0.05);
+            }
+
+            playSelection() {
+                this.playBeep(640, 'triangle', 0.1, 0.04);
+            }
+
+            playStep() {
+                this.playBeep(280, 'triangle', 0.14, 0.07);
+            }
+
+            playFlutter() {
+                if (!this.enabled) return;
+                this.init();
+                const sweeps = [330, 260, 200, 140];
+                sweeps.forEach((f, idx) => {
+                    setTimeout(() => {
+                        this.playBeep(f, 'sawtooth', 0.05, 0.015);
+                    }, idx * 45);
+                });
+            }
+
+            playCapture() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [580, 720, 880, 1100];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        this.playBeep(freq, 'sine', 0.08, 0.035);
+                    }, idx * 40);
+                });
+            }
+
+            playCheck() {
+                if (!this.enabled) return;
+                this.init();
+                this.playBeep(200, 'triangle', 0.22, 0.08);
+                setTimeout(() => {
+                    this.playBeep(310, 'triangle', 0.22, 0.08);
+                }, 130);
+            }
+
+            playVictory() {
+                if (!this.enabled) return;
+                this.init();
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        this.playBeep(freq, 'sine', 0.22, 0.05);
+                    }, idx * 100);
+                });
+            }
+
+            cycleBgm() {
+                this.init();
+                this.bgmState = (this.bgmState + 1) % 4;
+                
+                if (this.bgmState === 0) {
+                    this.stopBgm();
+                    return "BGM: OFF";
+                }
+
+                if (this.bgmState === 1) {
+                    this.currentTrackList = this.track1;
+                    this.startBgm();
+                    return "BGM: SAKURA";
+                } else if (this.bgmState === 2) {
+                    this.currentTrackList = this.track2;
+                    this.startBgm();
+                    return "BGM: BAT-CAVE";
+                } else if (this.bgmState === 3) {
+                    this.currentTrackList = this.track3;
+                    this.startBgm();
+                    return "BGM: COZY";
+                }
+            }
+
+            startBgm() {
+                this.stopBgm();
+                this.musicEnabled = true;
+                this.currentNoteIndex = 0;
+                this.playBgmStep();
+            }
+
+            stopBgm() {
+                this.musicEnabled = false;
+                if (this.bgmTimer) {
+                    clearTimeout(this.bgmTimer);
+                    this.bgmTimer = null;
+                }
+            }
+
+            playBgmStep() {
+                if (!this.musicEnabled || !this.enabled || this.bgmState === 0) return;
+                const note = this.currentTrackList[this.currentNoteIndex];
+                
+                this.playBeep(note[0], 'sine', note[1] * 0.55, 0.025);
+                
+                const stepMs = note[1] * 600; 
+                this.currentNoteIndex = (this.currentNoteIndex + 1) % this.currentTrackList.length;
+                this.bgmTimer = setTimeout(() => {
+                    this.playBgmStep();
+                }, stepMs);
+            }
+        }
+
+        const sfx = new RetroSoundChip();
+
+        document.getElementById('btnSound').addEventListener('click', () => {
+            sfx.enabled = !sfx.enabled;
+            const soundTxt = document.getElementById('soundText');
+            if (sfx.enabled) {
+                soundTxt.textContent = 'SFX: ON';
+                sfx.playSelection();
+            } else {
+                soundTxt.textContent = 'SFX: OFF';
+                sfx.stopBgm();
+                document.getElementById('musicText').textContent = 'BGM: OFF';
+                sfx.bgmState = 0;
+            }
+            renderControlIcons();
+        });
+
+        document.getElementById('btnMusic').addEventListener('click', () => {
+            sfx.init();
+            if (!sfx.enabled) return;
+            
+            const nextLabel = sfx.cycleBgm();
+            document.getElementById('musicText').textContent = nextLabel;
+            renderControlIcons();
+        });
+    </script>
+
+    <script>
+        // High fidelity custom 16x16 pixel-art colors
+        const cozyPalette = {
+            '.': 'transparent',
+            'O': '#4A1E2F', // Main outline chocolate/dark berry
+            'W': '#FFFFFF', // Clean White bases
+            'P': '#FFB7C5', // Team Sakura Pastel Pink
+            'H': '#8A7A8F', // Team Bat-Rose soft bat purple-grey
+            'B': '#2D2230', // Batman Dark mask cozy black
+            'Y': '#FFF05A', // Yellow star accent
+            'S': '#FFD0DA', // Sweet pink soft shadow
+            'E': '#4A1E2F',  // Eye dots
+            'R': '#FF4D6D'  // Red/Melody pink
+        };
+
+        const rawPixelGrids = {
+            // SAKURA TEAM PIECES (Hello Kitty - Pastel Pink Bows)
+            // Inspired by the authentic round outline, whiskers and nose of image_9890e2.png
+            wp: `
+                ................
+                ...O........O...
+                ..OWO......OWO..
+                ..OWWWOOOOWWWO..
+                ..OWWWWWWWWWWO..
+                .OWOPPOWWWWWWWO.
+                .OWOPPPOWWWWWWWO
+                .OWWOPPOWWWWWWO.
+                .OWWEWWWWWEWWWO.
+                ..OWWWWYWWWWWO..
+                ...OWWWWWWWWO...
+                ....OPPPPPPO....
+                ....OPPPPPPO....
+                ...OOOOOOOOOO...
+                ................
+                ................
+            `,
+            wr: `
+                .OO..OO..OO..OO.
+                .OP..OP..OP..OP.
+                .OPPPOPPPOPPPOP.
+                .OOOOOOOOOOOOOO.
+                ..OWWWWWWWWWWO..
+                ..OWWWPPWWWWWO..
+                ..OWWPPPPWWWWO..
+                ..OWWWPPWWWWWO..
+                ..OWWWWWWWWWWO..
+                ..OWWWWWWWWWWO..
+                ..OWWWWWWWWWWO..
+                .OPPPPPPPPPPPPO.
+                .OPPPPPPPPPPPPO.
+                .OOOOOOOOOOOOOO.
+                ................
+                ................
+            `,
+            wn: `
+                .....OOOOOO.....
+                ....OOWWWWOO....
+                ...OOWWWWWWOO...
+                ..OOWWOPPOWWWO..
+                ..OOWOPPPOWWWO..
+                ..OOWWOPPOWWWO..
+                ..OOWWWWWWWWO...
+                ...OOWEWWWWO....
+                ....OWWWWWWOOO..
+                ....OWWWWWWWWO..
+                ...OWWWWWWWWWO..
+                ..OWWOPPPPWWWO..
+                .OWWWOPPPPWWWO..
+                .OOOOOOOOOOOOO..
+                ................
+                ................
+            `,
+            wb: `
+                ......OO........
+                .....OPOO.......
+                ....OPPPOO......
+                ...OPPPPPOO.....
+                ..OPPPPPPPOO....
+                .OPPOOPPOOPPO...
+                .OOWOOWOOWOO....
+                .OOWWWWWWWWO....
+                .OWWEWWWWWEWO...
+                .OWWWWWYWWWWO...
+                .OOWWWWWWWWO....
+                ..OWWWWWWWWO....
+                ..OPPPPPPPPO....
+                ..OPPPPPPPPO....
+                ...OOOOOOOO.....
+                ................
+            `,
+            wq: `
+                ....O.OO.O......
+                ....OPYPYPO.....
+                ...OPPPPPPO.....
+                ..OOWWWWWWOO....
+                .OOWWWWWWWWOO...
+                .OOWOPPOWWOWO...
+                .OOWOPPPOWWOWO..
+                .OOWOPPOWWOWO...
+                .OWWWWWWWWWWO...
+                .OWWEWWWWWEWO...
+                .OWWWWWYWWWWO...
+                ..OWWWWWWWWO....
+                ..OPPPPPPPPO....
+                .OPPPPPPPPPP....
+                .OOOOOOOOOOOO...
+                ................
+            `,
+            wk: `
+                ......OO........
+                ....OOOOOO......
+                .....OYYO.......
+                ....OYYYYO......
+                ...OOWWWWOO.....
+                ..OOWWWWWWOO....
+                ..OOWWWWWWOO....
+                .OOWOPPOWWOWO...
+                .OOWOPPPOWWOWO..
+                .OWWWWWWWWWWO...
+                .OWWEWWWWWEWO...
+                .OWWWWWYWWWWO...
+                ..OWWWWWWWWO....
+                ..OPPPPPPPPO....
+                ...OOOOOOOO.....
+                ................
+            `,
+
+            // BAT-KITTY TEAM PIECES (Hello Kitty wearing Dark Knight Batman mask and Batman accent bows)
+            // Inspired by Batman chibi pointed mask and white eyes of image_989085.jpg
+            bp: `
+                ................
+                ...O........O...
+                ..OBO......OBO..
+                ..OBBBOOOOBBBO..
+                ..OBBBBBBBBBBO..
+                .OWOBBOWWWWWWO.
+                .OWOBBBOWWWWWWO.
+                .OWWOBBOWWWWWWO.
+                .OWWEWWWWWEWWWO.
+                ..OWWWWYWWWWWO..
+                ...OWWWWWWWWO...
+                ....OHHHHHHO....
+                ....OHHHHHHO....
+                ...OOOOOOOOOO...
+                ................
+                ................
+            `,
+            br: `
+                .OO..OO..OO..OO.
+                .OH..OH..OH..OH.
+                .OHHOHHOHHOHHOH.
+                .OOOOOOOOOOOOOO.
+                ..OBBBBBBBBBBO..
+                ..OBBBHHBBBBBO..
+                ..OBBHHHHBBBBO..
+                ..OBBBHHBBBBBO..
+                ..OBBBBBBBBBBO..
+                ..OWWWWWWWWWWO..
+                ..OWWWWWWWWWWO..
+                .OHHHHHHHHHHHHO.
+                .OHHHHHHHHHHHHO.
+                .OOOOOOOOOOOOOO.
+                ................
+                ................
+            `,
+            bn: `
+                .....OOOOOO.....
+                ....OOWWWWOO....
+                ...OOWWWWWWOO...
+                ..OOWWOBBOWWWO..
+                ..OOWOBBBOWWWO..
+                ..OOWWOBBOWWWO..
+                ..OOWWWWWWWWO...
+                ...OOWEWWWWO....
+                ....OWWWWWWOOO..
+                ....OWWWWWWWWO..
+                ...OWWWWWWWWWO..
+                ..OWWOHHHHWWWO..
+                .OWWWOHHHHWWWO..
+                .OOOOOOOOOOOOO..
+                ................
+                ................
+            `,
+            bb: `
+                ......OO........
+                .....OHOO.......
+                ....OHHHOO......
+                ...OHHHOO.......
+                ..OHHHHHOO......
+                .OHHOOHHOOHHO...
+                .OOBBBOBBBOBBO....
+                .OOWWWWWWWWO....
+                .OWWEWWWWWEWO...
+                .OWWWWWYWWWWO...
+                .OOWWWWWWWWO....
+                ..OWWWWWWWWO....
+                ..OHHHHHHHHO....
+                ..OHHHHHHHHO....
+                ...OOOOOOOO.....
+                ................
+            `,
+            bq: `
+                ....O.OO.O......
+                ....OHYHYHO.....
+                ...OHHHHHHO.....
+                ..OOBBBBBBOOBB..
+                .OOWWWWWWWWOO...
+                .OOWOBBOWWOWO...
+                .OOWOBBBOWWOWO..
+                .OOWOBBOWWOWO...
+                .OWWWWWWWWWWO...
+                .OWWEWWWWWEWO...
+                .OWWWWWYWWWWO...
+                ..OWWWWWWWWO....
+                ..OHHHHHHHHO....
+                .OHHHHHHHHHH....
+                .OOOOOOOOOOOO...
+                ................
+            `,
+            bk: `
+                ......OO........
+                ....OOOOOO......
+                .....OYYO.......
+                ....OYYYYO......
+                ...OOBBBBOOBB.....
+                ..OOWWWWWWOO....
+                ..OOWWWWWWOO....
+                .OOWOBBOWWOWO...
+                .OOWOBBBOWWOWO..
+                .OWWWWWWWWWWO...
+                .OWWEWWWWWEWO...
+                .OWWWWWYWWWWO...
+                ..OWWWWWWWWO....
+                ..OHHHHHHHHO....
+                ...OOOOOOOO.....
+                ................
+            `,
+
+            // EXQUISITE ACCURATE COZY AVATARS
+            // Pompompurin (inspired by image_9890bd.png): Brown beret, floppy side ears, round body
+            pompompurin: `
+                ................
+                .....OOOOOO.....
+                ....OOBBBOO.....
+                ....OBBBBBO.....
+                ...OOBBBBBOO....
+                ..OOYYYYYYYYOO..
+                .OYYYYYYYYYYYYO.
+                .OYYYYYYYYYYYYO.
+                .OYYYYYYYYYYYYO.
+                .OYOYYYYYYYYOYO.
+                .OYYOEYYYYEOYYO.
+                .OYYYOOOOOOYYYO.
+                ..OYYYYYYYYYYO..
+                ...OYYYYYYYYO...
+                ....OOOOOOOO....
+                ................
+            `,
+            // Hello Kitty (inspired by image_9890e2.png): Whiskers, red ears bow, cute face
+            mymelody: `
+                .....OOOO.......
+                ....ORRROO......
+                ...ORRRRROO.....
+                ..ORRRRRRROO....
+                .ORRRRRRRRROO...
+                .ORRWWWWWRRRO...
+                .ORWWWWWWWRRO...
+                .OWWEWWWWWEWO...
+                .OWWWWWYWWWWO...
+                ..OWWWWWWWWO....
+                ...ORRRRRRO.....
+                ....OOOOOO......
+                ................
+                ................
+                ................
+                ................
+            `,
+            cinnamoroll: `
+                ................
+                ..OO........OO..
+                .OWWO......OWWO.
+                .OWWWOOOOOOWWWO.
+                OWWWWWWWWWWWWWWO
+                OWWWWWWWWWWWWWWO
+                OWWEWWWWWWWEWWWO
+                OWWPPWWWWWWPPOWO
+                .OWWWWWWWWWWWWO.
+                ..OWWWWWWWWWWO..
+                ...OOOOOOOOOO...
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            // Chibi Batman (inspired by image_989085.jpg): White mask eyes, yellow chest plate, gray body
+            bat_robin: `
+                ................
+                ...O........O...
+                ..OBO......OBO..
+                ..OBBBOOOOBBBO..
+                ..OBBBBBBBBBBO..
+                .OWOBBWWWWWWWO.
+                .OWOBBWWWWWWWO.
+                .OWWEWWWWWEWWWO.
+                ..OWWWRRWWWWWO..
+                ...OWWRRWWWWWO..
+                ....OGGGGGO.....
+                ....OGGGGGO.....
+                ...OOOOOOOOOO...
+                ................
+                ................
+                ................
+            `,
+            bat_joker: `
+                ................
+                ...O........O...
+                ..OBO......OBO..
+                ..OBBBOOOOBBBO..
+                ..OBBBBBBBBBBO..
+                .OWOBBWWWWWWWO.
+                .OWOBBWWWWWWWO.
+                .OWWEWWWWWEWWWO.
+                ..OWWWWWWWWWWO..
+                ...OWWWWYWWWWO..
+                ....OHHHHHHO....
+                ....OHHHHHHO...
+                ...OOOOOOOOOO...
+                ................
+                ................
+                ................
+            `
+        };
+
+        const uiGrids = {
+            bow: `
+                ................
+                ...OOOO..OOOO...
+                ..OHHHOOOHHHOO..
+                ..OHHHHOHHHHOO..
+                ..OOHHHHHHOOO...
+                ...OOWWWOO......
+                ..OOHHHHHHOO....
+                ..OHHHHOHHHHO...
+                ..OHHHOOOHHHO...
+                ...OOOO..OOOO...
+                ................
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            crown: `
+                ................
+                .....OO..OO.....
+                ....OYYOOYYO....
+                ....OYYYYYYO....
+                ...OYYYYYYYYO...
+                ..OYYYYYYYYYYO..
+                ..OYYYYYYYYYYO..
+                .OYYYYYYYYYYYYO.
+                .OYOOYOOYOOYOOY.
+                .OYYYYYYYYYYYYO.
+                .OOOOOOOOOOOOOO.
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            speaker_on: `
+                ................
+                ......O.........
+                .....OO.........
+                ..OOOOO..O......
+                .OOWWWO.OO......
+                .OOWWWO..O......
+                .OOWWWO.OO......
+                ..OOOOO..O......
+                .....OO.........
+                ......O.........
+                ................
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            speaker_off: `
+                ................
+                ......O.........
+                .....OO..O...O..
+                ..OOOOO...O.O...
+                .OOWWWO....O....
+                .OOWWWO...O.O...
+                .OOWWWO..O...O..
+                ..OOOOO.........
+                .....OO.........
+                ......O.........
+                ................
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            music_on: `
+                ................
+                .....OOOOO......
+                .....OWWWO......
+                .....OWWWO......
+                .....OW.OO......
+                .....OW..O......
+                .....OW.OO......
+                ..OOOOO..O......
+                .OOWWWO.........
+                .OOWWWO.........
+                ..OOO...........
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            music_off: `
+                ................
+                .....OOOOO......
+                .....OWWWO.O..O.
+                .....OWWWO..OO..
+                .....OW.OO.O..O.
+                .....OW..O......
+                .....OW.OO......
+                ..OOOOO..O......
+                .OOWWWO.........
+                .OOWWWO.........
+                ..OOO...........
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            // Accurate Whiskers and red bow Hello Kitty
+            kitty_avatar_coach: `
+                ..OO........OO..
+                .OOWO......OWOO.
+                .OWWWO....OWWWO.
+                .OWWWWOOOOWWWWO.
+                .OWWOPPOWWWWOWO.
+                .OWOPPPOWWWWOWO.
+                .OWWOPPOWWWWOWO.
+                .OWWWWWWWWWWWWO.
+                .OWWEWWWWWEWWWO.
+                .OWWWWWYWWWWOO..
+                ..OWWWWWWWWW....
+                ...OWWWWWWW.....
+                ....OPPPPPO.....
+                ....OPPPPPO.....
+                ...OOOOOOOO.....
+                ................
+            `,
+            kitty_avatar_sakura: `
+                ..OO........OO..
+                .OOWO......OWOO.
+                .OWWWO....OWWWO.
+                .OWWWWOOOOWWWWO.
+                .OWWOPPOWWWWOWO.
+                .OWOPPPOWWWWOWO.
+                .OWWOPPOWWWWOWO.
+                .OWWWWWWWWWWWWO.
+                .OWWEWWWWWEWWWO.
+                .OWWWWWYWWWWOO..
+                ..OWWWWWWWWW....
+                ...OWWWWWWW.....
+                ....OPPPPPO.....
+                ....OPPPPPO.....
+                ...OOOOOOOO.....
+                ................
+            `,
+            // Batman Crossover Chibi Hello Kitty
+            kitty_avatar_berry: `
+                ..OO........OO..
+                .OOBO......OBOO.
+                .OBBBO....OBBBO.
+                .OBBBBOOOOBBBBO.
+                .OWOBBOWWWWOWO.
+                .OWOBBBOWWWWOWO.
+                .OWWOBBOWWWWOWO.
+                .OWWWWWWWWWWWWO.
+                .OWWEWWWWWEWWWO.
+                .OWWWWWYWWWWOO..
+                ..OWWWWWWWWW....
+                ...OWWWWWWW.....
+                ....OHHHHHO.....
+                ....OHHHHHO.....
+                ...OOOOOOOO.....
+                ................
+            `,
+            bat_signal_logo: `
+                ................
+                ...OO......OO...
+                ..OBOO....OOBO..
+                .OBBBBOOOOBBBBO.
+                .OBBBBBBBBBBBBO.
+                ..OBBBBBBBBBBO..
+                ...OBBBBBBBBO...
+                ....OBBBBBBO....
+                .....OBBBBO.....
+                ......OBBO......
+                .......OO.......
+                ................
+                ................
+                ................
+                ................
+                ................
+            `,
+            lock_icon: `
+                ................
+                ......OOOO......
+                .....OYYYYO.....
+                ....OYO..OYO....
+                ....OYO..OYO....
+                ....OOOOOOOO....
+                ...OYYYYYYYYO...
+                ...OYOYYYYOYO...
+                ...OYYYYYYYYO...
+                ...OYOYYYYOYO...
+                ...OYYYYYYYYO...
+                ....OOOOOOOO....
+                ................
+                ................
+            `
+        };
+
+        function parseGridToSVG(gridStr, colorMap = cozyPalette, customClasses = "") {
+            const rows = gridStr.trim().split('\n');
+            const height = rows.length;
+            const width = rows[0] ? rows[0].trim().length : 0;
+            
+            let rects = '';
+            for (let y = 0; y < height; y++) {
+                const row = rows[y].trim();
+                for (let x = 0; x < width; x++) {
+                    const char = row[x];
+                    if (char && char !== '.' && colorMap[char]) {
+                        rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${colorMap[char]}" />`;
+                    }
+                }
+            }
+            
+            return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-full ${customClasses}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+                ${rects}
+            </svg>`;
+        }
+
+        const customSVGs = {};
+        for (let key in rawPixelGrids) {
+            customSVGs[key] = parseGridToSVG(rawPixelGrids[key]);
+        }
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hello-kitty-batman-cozy-chess';
+        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        
+        let firebaseConfig = {};
+        try {
+            firebaseConfig = JSON.parse(rawConfig);
+        } catch (e) {
+            console.error("Failed to parse Firebase configuration", e);
+        }
+
+        let app, db, auth;
+        let isFirebaseActive = false;
+        let currentUserId = null;
+        let dbUnsubscribe = null;
+
+        async function setupCozyFirebase() {
+            const syncEl = document.getElementById('syncText');
+            const btnStatus = document.getElementById('btnStatus');
+
+            if (!firebaseConfig.apiKey) {
+                try {
+                    const response = await fetch('/__/firebase/init.json');
+                    if (response.ok) {
+                        firebaseConfig = await response.json();
+                    }
+                } catch (e) {
+                    console.warn("Could not fetch Firebase hosting auto-config, falling back to local mode:", e);
+                }
+            }
+
+            if (!firebaseConfig.apiKey) {
+                syncEl.textContent = "COZY LOCAL";
+                btnStatus.querySelector('span').className = "w-2 h-2 rounded-full bg-green-400 inline-block";
+                return;
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getDatabase(app);
+                auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        isFirebaseActive = true;
+                        syncEl.textContent = "LIVE COZY";
+                        btnStatus.querySelector('span').className = "w-2 h-2 rounded-full bg-green-500 inline-block";
+                    } else {
+                        isFirebaseActive = false;
+                        syncEl.textContent = "OFFLINE";
+                        btnStatus.querySelector('span').className = "w-2 h-2 rounded-full bg-red-500 inline-block";
+                    }
+                });
+            } catch (err) {
+                console.error("Firebase Setup Error:", err);
+                syncEl.textContent = "MOCK SYNC";
+                btnStatus.querySelector('span').className = "w-2 h-2 rounded-full bg-yellow-400 inline-block";
+            }
+        }
+
+        window.createOnlineGameDocument = async function(gameId) {
+            if (!isFirebaseActive) return null;
+            
+            const gameDocRef = ref(db, `artifacts/${appId}/public/data/games/${gameId}`);
+            const initialPayload = {
+                gameId: gameId,
+                fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+                turn: 'w',
+                whitePlayer: currentUserId,
+                whitePlayerName: userProfile.name,
+                whitePlayerAvatar: userProfile.avatar,
+                whitePlayerTheme: userProfile.theme,
+                blackPlayer: null,
+                whiteTime: 600,
+                blackTime: 600,
+                history: [],
+                captured: { white: [], black: [] },
+                lastUpdated: Date.now()
+            };
+
+            await set(gameDocRef, initialPayload);
+            return gameDocRef;
+        };
+
+        window.joinOnlineGameDocument = async function(gameId) {
+            if (!isFirebaseActive) return null;
+            const gameDocRef = ref(db, `artifacts/${appId}/public/data/games/${gameId}`);
+            const docSnap = await get(gameDocRef);
+
+            if (!docSnap.exists()) {
+                throw new Error("Game room not found!");
+            }
+
+            const data = docSnap.val();
+            if (data.whitePlayer !== currentUserId && !data.blackPlayer) {
+                await update(gameDocRef, {
+                    blackPlayer: currentUserId,
+                    blackPlayerName: userProfile.name,
+                    blackPlayerAvatar: userProfile.avatar,
+                    blackPlayerTheme: userProfile.theme,
+                    lastUpdated: Date.now()
+                });
+            }
+            return gameDocRef;
+        };
+
+        window.updateOnlineGame = async function(gameId, fields) {
+            if (!isFirebaseActive) return;
+            const gameDocRef = ref(db, `artifacts/${appId}/public/data/games/${gameId}`);
+            await update(gameDocRef, {
+                ...fields,
+                lastUpdated: Date.now()
+            });
+        };
+
+        window.listenToGameDoc = function(gameId, updateCallback) {
+            if (!isFirebaseActive) return;
+            if (dbUnsubscribe) dbUnsubscribe();
+
+            const gameDocRef = ref(db, `artifacts/${appId}/public/data/games/${gameId}`);
+            dbUnsubscribe = onValue(gameDocRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    updateCallback(snapshot.val());
+                }
+            }, (error) => {
+                console.error("Realtime Database listen error: ", error);
+            });
+        };
+
+        window.stopListeningToGame = function() {
+            if (dbUnsubscribe) {
+                dbUnsubscribe();
+                dbUnsubscribe = null;
+            }
+        };
+
+        window.getCurrentUserId = () => currentUserId;
+        window.isFirebaseOnline = () => isFirebaseActive;
+
+        window.addEventListener('load', () => {
+            setupCozyFirebase();
+        });
+    </script>
+
+    <script>
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor(x, y, type, color, velocityScale = 1) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                // Minimized velocity range for highly localized cozy clustering
+                const speed = (Math.random() * 0.8 + 0.4) * velocityScale;
+                this.vx = Math.cos(angle) * speed;
+                // Gentle drift lift to make them float elegantly
+                this.vy = Math.sin(angle) * speed - (Math.random() * 0.4 + 0.1);
+                this.alpha = 1;
+                this.scale = Math.random() * 0.25 + 0.5;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() * 0.06 - 0.03);
+                this.age = 0;
+                this.maxAge = Math.random() * 20 + 20; // 20-40 frames
+                this.color = color;
+                
+                // Prioritize ultra-cute Hello Kitty hearts, bows & stars
+                if (type === 'sakura') {
+                    const r = Math.random();
+                    if (r < 0.55) this.shape = 'heart'; // High probability of sweet hearts
+                    else if (r < 0.85) this.shape = 'bow';   // Characteristic bows
+                    else this.shape = 'star';
+                } else if (type === 'bat') {
+                    const r = Math.random();
+                    if (r < 0.45) this.shape = 'bat';
+                    else if (r < 0.8) this.shape = 'heart';  // Cozy Gotham love hearts
+                    else this.shape = 'star';
+                } else {
+                    this.shape = 'heart';
+                }
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.025; // Gentle gravity draft
+                this.rotation += this.rotationSpeed;
+                this.age++;
+                this.alpha = 1 - (this.age / this.maxAge);
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.globalAlpha = this.alpha;
+                const size = 11 * this.scale;
+
+                if (this.shape === 'heart') {
+                    drawHeart(ctx, 0, 0, size, this.color);
+                } else if (this.shape === 'star') {
+                    drawStar(ctx, 0, 0, size, this.color);
+                } else if (this.shape === 'bow') {
+                    drawBow(ctx, 0, 0, size, this.color);
+                } else if (this.shape === 'bat') {
+                    drawBat(ctx, 0, 0, size, this.color);
+                } else {
+                    // Cute bubble
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Highlight dot
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(-size / 6, -size / 6, size / 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        function drawHeart(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y + size/4);
+            ctx.quadraticCurveTo(x - size/2, y - size/2, x - size, y);
+            ctx.quadraticCurveTo(x - size, y + size/2, x, y + size);
+            ctx.quadraticCurveTo(x + size, y + size/2, x + size, y);
+            ctx.quadraticCurveTo(x + size/2, y - size/2, x, y + size/4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawStar(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                ctx.lineTo(x + Math.cos((18 + i * 72) * Math.PI / 180) * size, y - Math.sin((18 + i * 72) * Math.PI / 180) * size);
+                ctx.lineTo(x + Math.cos((54 + i * 72) * Math.PI / 180) * (size/2), y - Math.sin((54 + i * 72) * Math.PI / 180) * (size/2));
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawBow(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            // Left loop
+            ctx.beginPath();
+            ctx.arc(x - size/3, y, size/3, 0, Math.PI*2);
+            ctx.fill();
+            // Right loop
+            ctx.beginPath();
+            ctx.arc(x + size/3, y, size/3, 0, Math.PI*2);
+            ctx.fill();
+            // Center knot
+            ctx.fillStyle = "#4A1E2F";
+            ctx.beginPath();
+            ctx.arc(x, y, size/4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = "#FFF05A"; // Cute yellow center
+            ctx.beginPath();
+            ctx.arc(x, y, size/6, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        function drawBat(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y + size/4);
+            ctx.lineTo(x + size/2, y - size/4);
+            ctx.lineTo(x + size/4, y);
+            ctx.lineTo(x + size, y - size/2);
+            ctx.lineTo(x + size/2, y + size/2);
+            ctx.lineTo(x, y + size/3);
+            ctx.lineTo(x - size/2, y + size/2);
+            ctx.lineTo(x - size, y - size/2);
+            ctx.lineTo(x - size/4, y);
+            ctx.lineTo(x - size/2, y - size/4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        window.spawnParticles = function(x, y, options = {}) {
+            const count = options.count || 10;
+            const type = options.type || 'sakura';
+            const scale = options.velocityScale || 1;
+            
+            const sakuraColors = ['#FFB7C5', '#FF4D6D', '#FFFDF9', '#FFD0DA', '#FFF05A'];
+            const batColors = ['#5C4A60', '#4A1E2F', '#8A7A8F', '#2D2230', '#FFF05A'];
+            
+            const pool = (type === 'sakura') ? sakuraColors : batColors;
+
+            for (let i = 0; i < count; i++) {
+                const color = pool[Math.floor(Math.random() * pool.length)];
+                particles.push(new Particle(x, y, type, color, scale));
+            }
+        };
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles = particles.filter(p => {
+                p.update();
+                p.draw();
+                return p.age < p.maxAge;
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        requestAnimationFrame(animateParticles);
+
+        // Global Event listener for button clicks to trigger cozy particles
+        window.addEventListener('click', (e) => {
+            const btn = e.target.closest('button, input[type="button"]');
+            if (btn) {
+                const isSakura = btn.classList.contains('cozy-btn-sakura') || btn.id === 'btnSound' || btn.id === 'btnMusic';
+                spawnParticles(e.clientX, e.clientY, {
+                    type: isSakura ? 'sakura' : 'bat',
+                    count: 10,
+                    velocityScale: 0.75 // Restricted compact splash
+                });
+            }
+        });
+    </script>
+
+    <script>
+        let isFlipped = false;
+        let opponentType = 'friend'; // 'friend', 'ai-easy', 'ai-medium', 'online'
+        let selectedSquare = null;
+        let validMoves = [];
+        let currentPromotionMove = null;
+        let lastMove = null; // Track last made move for placement pop animation
+        
+        let onlineGameId = null;
+        let playerRole = 'w'; // 'w' for White/Sakura, 'b' for Black/Bat, 'spectator'
+
+        // Beautiful Advisor Commentaries
+        const coachPhrases = {
+            start: [
+                "SO COZY! SELECT A MODE TO COMMENCE THE STRATEGY MATCH!",
+                "THE PINK BOARD IS PREPARED! CHOOSE YOUR MATCH!",
+                "READY TO LEAP! SECURE THE COZY BOARD!"
+            ],
+            select: [
+                "COORDINATE CHOSEN! WHERE SHALL WE LAND?",
+                "PIECE SELECTED! DEPLOY SAFELY!",
+                "STRATEGY COMMENCED! MAKE A SWEET MATCH!"
+            ],
+            step: [
+                "COZY STEP ACCOMPLISHED!",
+                "A SWEET PLACEMENT COMPLETED!",
+                "NICE WORK! A TRULY STRATEGIC MOVE!"
+            ],
+            capture: [
+                "SPLAT! CHIPS SECURED! COZY SPLASH CAPTURE!",
+                "FABULOUS CAPTURE! AN ADORABLE REWARD!",
+                "TACTICAL ADVANTAGE! RECOVERED OPPOSENT PIECE!"
+            ],
+            check: [
+                "ALERT! THE KING IS THREATENED! SECURE DEFENSES!",
+                "WATCH OUT! SHIELD THE COZY THRONE!",
+                "CHECK DECLARED! DEPLOY PROTECTORS!"
+            ],
+            draw: [
+                "TIED MATCH! SHARED ADORABLE CUPCAKES!",
+                "A FRIENDLY DRAW! TRULY OUTSTANDING COZY PLAY!"
+            ],
+            victorySakura: [
+                "VICTORY SECURED! TEAM SAKURA CAPTURED CHAMPIONSHIP!",
+                "HOORAY! EXCELLENT SAKURA STRATEGY WIN!"
+            ],
+            victoryBerry: [
+                "VICTORY SECURED! TEAM BAT-ROSE EMERGES TRIUMPHANT!",
+                "CONGRATULATIONS! BAT-KITTY SECURES THE VICTORIES!"
+            ],
+            botThinking: [
+                "BAT-KITTY BOT IS COMPILING PLACEMENT SYSTEMS...",
+                "ANALYZING SAKURA COORDINATES...",
+                "COZY MACHINE CALCULATING..."
+            ]
+        };
+
+        function setCoachText(type) {
+            const pool = coachPhrases[type];
+            if (pool) {
+                const randomMsg = pool[Math.floor(Math.random() * pool.length)];
+                document.getElementById('coach-bubble-text').textContent = randomMsg;
+            }
+        }
+
+        let timerInterval = null;
+        let whiteTime = 600;
+        let blackTime = 600;
+
+        const game = new Chess();
+
+        // PROFILE / AUTH / THEME CONFIGURATIONS
+        let userProfile = {
+            name: "Cozy Sakura",
+            theme: "kitty", // "kitty" or "batman"
+            avatar: "kitty_avatar_sakura",
+            nameColor: "#FF4D6D"
+        };
+        let isMultiplayerUnlocked = false;
+
+        // Franchise Characters
+        // Accurate Hello Kitty coordinates inspired by image_9890e2.png
+        // Accurate Pompompurin inspired by image_9890bd.png
+        const kittyAvatars = [
+            { key: "kitty_avatar_sakura", name: "Hello Kitty", label: "KITTY" },
+            { key: "pompompurin", name: "Pompompurin", label: "PURIN" },
+            { key: "mymelody", name: "My Melody", label: "MELODY" },
+            { key: "cinnamoroll", name: "Cinnamoroll", label: "CINNAMO" }
+        ];
+
+        // Batman Crossover Characters
+        // Accurate pointy ears Batman layout inspired by image_989085.jpg
+        const batmanAvatars = [
+            { key: "kitty_avatar_berry", name: "Bat-Kitty", label: "BAT-KITTY" },
+            { key: "bat_robin", name: "Bat-Robin", label: "ROBIN" },
+            { key: "bat_joker", name: "Joker-Kitty", label: "JOKER" }
+        ];
+
+        let selectedAvatarKey = "kitty_avatar_sakura";
+        let selectedTheme = "kitty";
+
+        window.openUnlockProfileModal = function() {
+            sfx.playSelection();
+            document.getElementById('profile-unlock-modal').classList.remove('hidden');
+            renderAvatarGrid();
+        };
+
+        window.closeUnlockProfileModal = function() {
+            sfx.playClick();
+            document.getElementById('profile-unlock-modal').classList.add('hidden');
+        };
+
+        window.selectProfileTheme = function(theme) {
+            sfx.playSelection();
+            selectedTheme = theme;
+            
+            const btnKitty = document.getElementById('toggle-theme-kitty');
+            const btnBatman = document.getElementById('toggle-theme-batman');
+
+            if (theme === 'kitty') {
+                btnKitty.className = "flex-1 py-1.5 font-bold bg-[#FFB7C5] text-[#4A1E2F] border-r-4 border-[#4A1E2F] uppercase transition-colors";
+                btnBatman.className = "flex-1 py-1.5 font-bold bg-[#FFFDF9] text-[#4A1E2F] uppercase transition-colors";
+                selectedAvatarKey = kittyAvatars[0].key;
+            } else {
+                btnKitty.className = "flex-1 py-1.5 font-bold bg-[#FFFDF9] text-[#4A1E2F] border-r-4 border-[#4A1E2F] uppercase transition-colors";
+                btnBatman.className = "flex-1 py-1.5 font-bold bg-[#5C4A60] text-white uppercase transition-colors";
+                selectedAvatarKey = batmanAvatars[0].key;
+            }
+            renderAvatarGrid();
+        };
+
+        function renderAvatarGrid() {
+            const grid = document.getElementById('avatar-grid-selection');
+            grid.innerHTML = '';
+
+            const list = selectedTheme === 'kitty' ? kittyAvatars : batmanAvatars;
+
+            list.forEach(av => {
+                const btn = document.createElement('button');
+                const isSelected = av.key === selectedAvatarKey;
+                
+                btn.className = `flex flex-col items-center justify-center p-1.5 rounded-xl border-4 transition-all focus:outline-none ${
+                    isSelected ? 'border-[#FF4D6D] bg-[#FFFDF9] scale-105 shadow-inner' : 'border-[#4A1E2F] bg-white hover:border-[#FF99AC]'
+                }`;
+                
+                const avGrid = rawPixelGrids[av.key] || uiGrids[av.key];
+                const svgContent = parseGridToSVG(avGrid, cozyPalette, "w-10 h-10");
+
+                btn.innerHTML = `
+                    <div class="w-8 h-8">${svgContent}</div>
+                    <span class="text-[5px] sm:text-[6px] font-black text-[#4A1E2F] mt-1 uppercase font-mono tracking-tighter truncate max-w-full">${av.label}</span>
+                `;
+
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    sfx.playSelection();
+                    selectedAvatarKey = av.key;
+                    renderAvatarGrid();
+                };
+
+                grid.appendChild(btn);
+            });
+        }
+
+        window.saveAndUnlockProfile = function() {
+            const nickInput = document.getElementById('profile-name-input').value.trim();
+            if (!nickInput) {
+                showToast("ENTER A NAME FIRST!");
+                return;
+            }
+
+            userProfile.name = nickInput;
+            userProfile.theme = selectedTheme;
+            userProfile.avatar = selectedAvatarKey;
+
+            // Change name color based on theme
+            if (selectedTheme === 'batman') {
+                userProfile.nameColor = '#2D2230'; // Batman dark theme color
+            } else {
+                userProfile.nameColor = '#FF4D6D'; // Pink Hello Kitty theme color
+            }
+
+            isMultiplayerUnlocked = true;
+
+            // Unlock online multiplayer card
+            document.getElementById('multiplayer-locked-overlay').classList.add('hidden');
+            document.getElementById('multiplayer-unlocked-content').classList.remove('opacity-20', 'pointer-events-none');
+
+            // Apply profile cosmetics
+            applyProfileVisuals();
+
+            closeUnlockProfileModal();
+            showToast(`PROFILE UNLOCKED: ${userProfile.name.toUpperCase()}!`);
+        };
+
+        function applyProfileVisuals() {
+            // Apply customized colors to player labels
+            const labels = document.querySelectorAll('.user-name-label');
+            labels.forEach(lbl => {
+                lbl.textContent = userProfile.name;
+                lbl.style.color = userProfile.nameColor;
+            });
+
+            // Update user profile card avatar depending on role
+            const whiteAvatar = document.getElementById('avatar-sakura');
+            const whiteAvatarMob = document.getElementById('avatar-sakura-mob');
+            const blackAvatar = document.getElementById('avatar-berry');
+            const blackAvatarMob = document.getElementById('avatar-berry-mob');
+
+            const sourceGrid = rawPixelGrids[userProfile.avatar] || uiGrids[userProfile.avatar];
+            const svgMarkup = parseGridToSVG(sourceGrid);
+
+            if (playerRole === 'w') {
+                if (whiteAvatar) whiteAvatar.innerHTML = svgMarkup;
+                if (whiteAvatarMob) whiteAvatarMob.innerHTML = svgMarkup;
+            } else if (playerRole === 'b') {
+                if (blackAvatar) blackAvatar.innerHTML = svgMarkup;
+                if (blackAvatarMob) blackAvatarMob.innerHTML = svgMarkup;
+            }
+        }
+
+        function initStaticAssets() {
+            document.getElementById('header-logo-container').innerHTML = parseGridToSVG(uiGrids.bat_signal_logo);
+            document.getElementById('coach-avatar-container').innerHTML = parseGridToSVG(uiGrids.kitty_avatar_coach);
+            document.getElementById('avatar-sakura').innerHTML = parseGridToSVG(uiGrids.kitty_avatar_sakura);
+            document.getElementById('avatar-berry').innerHTML = parseGridToSVG(uiGrids.kitty_avatar_berry);
+            document.getElementById('avatar-sakura-mob').innerHTML = parseGridToSVG(uiGrids.kitty_avatar_sakura);
+            document.getElementById('avatar-berry-mob').innerHTML = parseGridToSVG(uiGrids.kitty_avatar_berry);
+            document.getElementById('banner-bow-left').innerHTML = parseGridToSVG(uiGrids.bow);
+            document.getElementById('banner-bow-right').innerHTML = parseGridToSVG(uiGrids.bow);
+            document.getElementById('gameover-crown-container').innerHTML = parseGridToSVG(uiGrids.crown);
+            document.getElementById('lock-icon-container').innerHTML = parseGridToSVG(uiGrids.lock_icon);
+            
+            document.getElementById('offline-icon').innerHTML = parseGridToSVG(uiGrids.kitty_avatar_sakura, cozyPalette, "w-full h-full");
+            document.getElementById('online-icon').innerHTML = parseGridToSVG(uiGrids.kitty_avatar_berry, cozyPalette, "w-full h-full");
+            renderControlIcons();
+        }
+
+        function renderControlIcons() {
+            const soundIconHolder = document.getElementById('sound-icon-holder');
+            if (soundIconHolder) {
+                soundIconHolder.innerHTML = parseGridToSVG(sfx.enabled ? uiGrids.speaker_on : uiGrids.speaker_off);
+            }
+
+            const musicIconHolder = document.getElementById('music-icon-holder');
+            if (musicIconHolder) {
+                musicIconHolder.innerHTML = parseGridToSVG(sfx.musicEnabled ? uiGrids.music_on : uiGrids.music_off);
+            }
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('cozy-toast');
+            document.getElementById('toast-text').textContent = text;
+            toast.classList.remove('hidden');
+            sfx.playFlutter();
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+
+    <script>
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+
+            const ranks = isFlipped ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
+            const files = isFlipped ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
+
+            for (let r of ranks) {
+                for (let f of files) {
+                    const squareCode = getSquareName(f, r);
+                    const piece = game.get(squareCode);
+                    const isDark = (r + f) % 2 === 0;
+
+                    const sqEl = document.createElement('div');
+                    sqEl.className = `w-full h-full relative flex items-center justify-center cursor-pointer transition-colors duration-200 ${
+                        isDark ? 'dark-square' : 'light-square'
+                    }`;
+                    sqEl.dataset.square = squareCode;
+
+                    // Selection highlight (subtle arcade pulse)
+                    if (selectedSquare === squareCode) {
+                        sqEl.classList.add('selected-square');
+                    }
+
+                    // Highlight king on active check
+                    if (piece && piece.type === 'k' && game.in_check() && piece.color === game.turn()) {
+                        sqEl.classList.add('bg-[#FF4D6D]', 'bg-opacity-50', 'animate-pulse');
+                    }
+
+                    sqEl.addEventListener('click', () => handleSquareClick(squareCode));
+
+                    renderCoordinates(sqEl, f, r);
+
+                    // Highlighting valid movement squares
+                    const isMove = validMoves.some(m => m.to === squareCode);
+                    if (isMove) {
+                        const targetMove = validMoves.find(m => m.to === squareCode);
+                        const overlay = document.createElement('div');
+
+                        if (targetMove.flags.includes('c') || game.get(squareCode)) {
+                            // Target attack: Semi-transparent heart overlay covering the piece in range
+                            overlay.className = "absolute inset-0 flex items-center justify-center pointer-events-none z-30 p-1";
+                            overlay.innerHTML = `<svg viewBox="0 0 8 8" class="w-[80%] h-[80%] cozy-indicator" style="opacity: 0.55;" shape-rendering="crispEdges">
+                                <path d="M1 1h2v1H1V1zm4 0h2v1H5V1zM0 2h8v2H0V2zm1 2h6v1H1V4zm1 1h4v1H2V5zm2 1h1v1H4V6z" fill="#FF4D6D" />
+                            </svg>`;
+                        } else {
+                            // Cozy Heart move indicator SVG (rendered behind or standard z-index)
+                            overlay.className = "absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-2";
+                            overlay.innerHTML = `<svg viewBox="0 0 8 8" class="w-3.5 h-3.5 cozy-indicator" shape-rendering="crispEdges">
+                                <path d="M1 1h2v1H1V1zm4 0h2v1H5V1zM0 2h8v2H0V2zm1 2h6v1H1V4zm1 1h4v1H2V5zm2 1h1v1H4V6z" fill="#FF4D6D" />
+                            </svg>`;
+                        }
+                        sqEl.appendChild(overlay);
+                    }
+
+                    // Render gorgeous piece SVG
+                    if (piece) {
+                        const pieceCode = `${piece.color}${piece.type}`;
+                        const pieceEl = document.createElement('div');
+                        pieceEl.className = "w-[85%] h-[85%] flex items-center justify-center select-none active:scale-105 transition-transform duration-75 z-20 hover:scale-105";
+                        pieceEl.innerHTML = customSVGs[pieceCode] || '';
+                        
+                        // Active land animation if piece just arrived (tamer movement pop)
+                        if (lastMove && lastMove.to === squareCode) {
+                            pieceEl.classList.add('animate-land');
+                        } else {
+                            pieceEl.classList.add('piece-bounce');
+                        }
+
+                        sqEl.appendChild(pieceEl);
+                    }
+
+                    boardEl.appendChild(sqEl);
+                }
+            }
+        }
+
+        function renderCoordinates(sqEl, f, r) {
+            const filesArr = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            
+            // Draw numerical rank labels
+            if ((!isFlipped && f === 0) || (isFlipped && f === 7)) {
+                const label = document.createElement('span');
+                label.className = "absolute top-1 left-1 coord-label select-none pointer-events-none opacity-40";
+                label.textContent = r + 1;
+                sqEl.appendChild(label);
+            }
+
+            // Draw alphabetical file labels
+            if ((!isFlipped && r === 0) || (isFlipped && r === 7)) {
+                const label = document.createElement('span');
+                label.className = "absolute bottom-1 right-1 coord-label select-none pointer-events-none opacity-40";
+                label.textContent = filesArr[f].toUpperCase();
+                sqEl.appendChild(label);
+            }
+        }
+
+        function getSquareName(fileIdx, rankIdx) {
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+            return `${files[fileIdx]}${rankIdx + 1}`;
+        }
+    </script>
+
+    <script>
+        function handleSquareClick(square) {
+            if (game.game_over()) return;
+
+            if (opponentType === 'online') {
+                if (game.turn() !== playerRole) {
+                    showToast("NOT YOUR COZY TURN!");
+                    return;
+                }
+            } else if (opponentType.startsWith('ai') && game.turn() === 'b') {
+                return; // Wait for bot move
+            }
+
+            const piece = game.get(square);
+
+            if (selectedSquare === square) {
+                selectedSquare = null;
+                validMoves = [];
+                sfx.playSelection();
+                renderBoard();
+            } else if (piece && piece.color === game.turn()) {
+                selectedSquare = square;
+                sfx.playSelection();
+                validMoves = game.moves({ square: square, verbose: true });
+                setCoachText('select');
+                renderBoard();
+            } else if (selectedSquare) {
+                attemptMove(selectedSquare, square);
+            }
+        }
+
+        function attemptMove(from, to) {
+            const possibleMoves = game.moves({ square: from, verbose: true });
+            const move = possibleMoves.find(m => m.to === to);
+
+            if (!move) {
+                selectedSquare = null;
+                validMoves = [];
+                renderBoard();
+                return;
+            }
+
+            if (move.flags.includes('p')) {
+                currentPromotionMove = { from, to };
+                showPromotionModal(game.turn());
+                return;
+            }
+
+            executeMove({ from, to });
+        }
+    </script>
+
+    <script>
+        function executeMove(moveData) {
+            const fromPiece = game.get(moveData.from);
+            const targetPiece = game.get(moveData.to);
+            const isCapture = !!targetPiece || (moveData.flags && moveData.flags.includes('e'));
+
+            const result = game.move(moveData);
+
+            if (result) {
+                lastMove = result; 
+
+                // Get coordinates of the destination square to spawn gorgeous particles
+                const sqEl = document.querySelector(`[data-square="${moveData.to}"]`);
+                let cx = window.innerWidth / 2;
+                let cy = window.innerHeight / 2;
+                if (sqEl) {
+                    const r = sqEl.getBoundingClientRect();
+                    cx = r.left + r.width / 2;
+                    cy = r.top + r.height / 2;
+                }
+
+                if (isCapture) {
+                    sfx.playCapture();
+                    updateCaptures();
+                    setCoachText('capture');
+
+                    // Spawn capture particles based on which side was captured (Sakura / Bat)
+                    const capturedColor = fromPiece.color === 'w' ? 'b' : 'w';
+                    spawnParticles(cx, cy, {
+                        type: capturedColor === 'w' ? 'sakura' : 'bat',
+                        count: 18, // Tighter count
+                        velocityScale: 1.1 // Tighter, cute localized burst
+                    });
+
+                    // Calmed capture shake animation
+                    const boardContainer = document.getElementById('board-container');
+                    if (boardContainer) {
+                        boardContainer.classList.add('animate-shake');
+                        setTimeout(() => {
+                            boardContainer.classList.remove('animate-shake');
+                        }, 300);
+                    }
+
+                    // Emit subtle ambient particles around board edges
+                    const bRect = boardContainer.getBoundingClientRect();
+                    for (let k = 0; k < 6; k++) {
+                        const edgeX = bRect.left + Math.random() * bRect.width;
+                        const edgeY = bRect.top + Math.random() * bRect.height;
+                        spawnParticles(edgeX, edgeY, {
+                            type: Math.random() > 0.5 ? 'sakura' : 'bat',
+                            count: 1,
+                            velocityScale: 0.5
+                        });
+                    }
+                } else {
+                    sfx.playStep();
+                    setCoachText('step');
+
+                    // Cozy, localized landing sparkle particles
+                    spawnParticles(cx, cy, {
+                        type: fromPiece.color === 'w' ? 'sakura' : 'bat',
+                        count: 6, // Charming compact burst
+                        velocityScale: 0.6
+                    });
+                }
+
+                selectedSquare = null;
+                validMoves = [];
+
+                if (opponentType === 'online') {
+                    updateOnlineGame(onlineGameId, {
+                        fen: game.fen(),
+                        turn: game.turn(),
+                        history: game.history({ verbose: true }),
+                        whiteTime: whiteTime,
+                        blackTime: blackTime
+                    }).catch(err => {
+                        console.error("Failed to sync move online:", err);
+                    });
+                } else {
+                    updateStatus();
+                    renderBoard();
+
+                    if (opponentType.startsWith('ai') && !game.game_over() && game.turn() === 'b') {
+                        setCoachText('botThinking');
+                        setTimeout(triggerAIMove, 700);
+                    }
+                }
+            }
+        }
+
+        function showPromotionModal(color) {
+            const choicesContainer = document.getElementById('promotion-choices');
+            choicesContainer.innerHTML = '';
+            
+            const options = [
+                { type: 'q', name: 'QUEEN', label: color === 'w' ? 'wq' : 'bq' },
+                { type: 'r', name: 'ROOK', label: color === 'w' ? 'wr' : 'br' },
+                { type: 'b', name: 'BISHOP', label: color === 'w' ? 'wb' : 'bb' },
+                { type: 'n', name: 'KNIGHT', label: color === 'w' ? 'wn' : 'bn' }
+            ];
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "flex flex-col items-center justify-center p-3 bg-[#FFF5F7] hover:bg-[#FF85A1] border-4 border-[#4A1E2F] rounded-xl transition-all focus:outline-none";
+                btn.innerHTML = `
+                    <div class="w-10 h-10">${customSVGs[opt.label]}</div>
+                    <span class="text-[10px] font-black text-[#4A1E2F] mt-2 font-mono tracking-tighter">${opt.name}</span>
+                `;
+                btn.onclick = () => {
+                    promotePawn(opt.type);
+                };
+                choicesContainer.appendChild(btn);
+            });
+
+            document.getElementById('promotion-modal').classList.remove('hidden');
+        }
+
+        function promotePawn(pieceType) {
+            document.getElementById('promotion-modal').classList.add('hidden');
+            if (currentPromotionMove) {
+                executeMove({
+                    from: currentPromotionMove.from,
+                    to: currentPromotionMove.to,
+                    promotion: pieceType
+                });
+                currentPromotionMove = null;
+            }
+        }
+    </script>
+
+    <script>
+        function startOffline(difficulty) {
+            sfx.playClick();
+            opponentType = difficulty;
+            playerRole = 'w'; 
+
+            document.getElementById('black-role-subtitle').textContent = difficulty === 'ai-easy' ? 'Easy Cozy Bot' : 'Medium Bat Bot';
+            document.getElementById('role-display-text').textContent = "PLAYING TEAM SAKURA";
+
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('room-info-card').classList.add('hidden');
+            document.getElementById('room-info-mob').classList.add('hidden');
+
+            resetGame();
+        }
+
+        function leaveRoomAndLobby() {
+            sfx.playClick();
+            stopListeningToGame();
+            if (timerInterval) clearInterval(timerInterval);
+
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('hidden');
+            document.getElementById('room-info-mob').classList.add('hidden');
+            
+            setCoachText('start');
+        }
+
+        async function createNewOnlineRoom() {
+            sfx.playClick();
+            if (!isFirebaseOnline()) {
+                showToast("FIREBASE OFFLINE - COZY LOCAL ONLY!");
+                return;
+            }
+
+            const uniqueRoomId = 'COZY-' + Math.floor(1000 + Math.random() * 9000);
+            showToast("CREATING COZY ROOM...");
+
+            try {
+                await createOnlineGameDocument(uniqueRoomId);
+                onlineGameId = uniqueRoomId;
+                opponentType = 'online';
+                playerRole = 'w'; 
+
+                document.getElementById('room-code-display').textContent = uniqueRoomId;
+                document.getElementById('room-code-display-mob').textContent = uniqueRoomId;
+                document.getElementById('role-display-text').textContent = "HOST - TEAM SAKURA";
+                document.getElementById('room-info-card').classList.remove('hidden');
+                document.getElementById('room-info-mob').classList.remove('hidden');
+                document.getElementById('black-role-subtitle').textContent = 'Waiting for Partner...';
+
+                document.getElementById('lobby-screen').classList.add('hidden');
+                document.getElementById('game-screen').classList.remove('hidden');
+
+                resetLocalState();
+                listenToGameDoc(uniqueRoomId, syncOnlineState);
+                applyProfileVisuals();
+                startTimers();
+            } catch (err) {
+                console.error("Room creation failed:", err);
+                showToast("FAILED TO CREATE ROOM");
+            }
+        }
+
+        async function joinOnlineRoom() {
+            sfx.playClick();
+            if (!isFirebaseOnline()) {
+                showToast("FIREBASE OFFLINE - COZY LOCAL ONLY!");
+                return;
+            }
+
+            const codeInput = document.getElementById('room-code-input').value.trim().toUpperCase();
+            if (!codeInput) {
+                showToast("ENTER A ROOM CODE!");
+                return;
+            }
+
+            showToast("CONNECTING TO ROOM...");
+
+            try {
+                await joinOnlineGameDocument(codeInput);
+                onlineGameId = codeInput;
+                opponentType = 'online';
+                playerRole = 'b'; 
+
+                document.getElementById('room-code-display').textContent = codeInput;
+                document.getElementById('room-code-display-mob').textContent = codeInput;
+                document.getElementById('role-display-text').textContent = "PARTNER - TEAM BAT-ROSE";
+                document.getElementById('room-info-card').classList.remove('hidden');
+                document.getElementById('room-info-mob').classList.remove('hidden');
+                document.getElementById('black-role-subtitle').textContent = 'Online Opponent';
+
+                document.getElementById('lobby-screen').classList.add('hidden');
+                document.getElementById('game-screen').classList.remove('hidden');
+
+                isFlipped = true;
+
+                resetLocalState();
+                listenToGameDoc(codeInput, syncOnlineState);
+                applyProfileVisuals();
+                startTimers();
+            } catch (err) {
+                console.error("Failed to join room:", err);
+                showToast("ROOM NOT FOUND OR OCCUPIED");
+            }
+        }
+
+        function copyRoomCode() {
+            const code = onlineGameId || document.getElementById('room-code-display').textContent;
+            
+            const el = document.createElement('textarea');
+            el.value = code;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            showToast("ROOM CODE COPIED!");
+        }
+
+        function syncOnlineState(payload) {
+            if (!payload) return;
+
+            if (game.fen() !== payload.fen) {
+                game.load(payload.fen);
+                
+                if (game.in_check()) {
+                    sfx.playCheck();
+                    setCoachText('check');
+                } else {
+                    sfx.playStep();
+                    setCoachText('step');
+                }
+            }
+
+            // Sync other player details dynamically
+            if (payload.blackPlayer) {
+                const bName = payload.blackPlayerName || "Cozy Bat-Kitty";
+                const bTheme = payload.blackPlayerTheme || "batman";
+                const bAvatar = payload.blackPlayerAvatar || "kitty_avatar_berry";
+                
+                const bRoleSubtitle = document.getElementById('black-role-subtitle');
+                if (bRoleSubtitle) {
+                    bRoleSubtitle.textContent = bName;
+                    bRoleSubtitle.style.color = bTheme === 'batman' ? '#2D2230' : '#FF4D6D';
+                }
+
+                // Render other player's avatar
+                const avGrid = rawPixelGrids[bAvatar] || uiGrids[bAvatar];
+                const avSvg = parseGridToSVG(avGrid);
+                const berryEl = document.getElementById('avatar-berry');
+                const berryMobEl = document.getElementById('avatar-berry-mob');
+                if (berryEl) berryEl.innerHTML = avSvg;
+                if (berryMobEl) berryMobEl.innerHTML = avSvg;
+            } else {
+                document.getElementById('black-role-subtitle').textContent = "Awaiting cowl...";
+            }
+
+            if (payload.whitePlayer && playerRole === 'b') {
+                const wName = payload.whitePlayerName || "Cozy Sakura";
+                const wTheme = payload.whitePlayerTheme || "kitty";
+                const wAvatar = payload.whitePlayerAvatar || "kitty_avatar_sakura";
+
+                const wNameLabel = document.querySelector('.user-name-label');
+                if (wNameLabel) {
+                    wNameLabel.textContent = wName;
+                    wNameLabel.style.color = wTheme === 'batman' ? '#2D2230' : '#FF4D6D';
+                }
+
+                const avGrid = rawPixelGrids[wAvatar] || uiGrids[wAvatar];
+                const avSvg = parseGridToSVG(avGrid);
+                const sakuraEl = document.getElementById('avatar-sakura');
+                const sakuraMobEl = document.getElementById('avatar-sakura-mob');
+                if (sakuraEl) sakuraEl.innerHTML = avSvg;
+                if (sakuraMobEl) sakuraMobEl.innerHTML = avSvg;
+            }
+
+            whiteTime = payload.whiteTime || 600;
+            blackTime = payload.blackTime || 600;
+
+            updateTimerDisplay('white', whiteTime);
+            updateTimerDisplay('black', blackTime);
+
+            updateStatus();
+            updateCaptures();
+            renderBoard();
+        }
+
+        function resetLocalState() {
+            game.reset();
+            selectedSquare = null;
+            validMoves = [];
+            currentPromotionMove = null;
+            lastMove = null;
+            whiteTime = 600;
+            blackTime = 600;
+        }
+    </script>
+
+    <script>
+        function triggerAIMove() {
+            if (game.game_over()) return;
+
+            const moves = game.moves({ verbose: true });
+            if (moves.length === 0) return;
+
+            let chosenMove = null;
+
+            if (opponentType === 'ai-easy') {
+                const captures = moves.filter(m => m.flags.includes('c'));
+                if (captures.length > 0 && Math.random() < 0.4) {
+                    chosenMove = captures[Math.floor(Math.random() * captures.length)];
+                } else {
+                    chosenMove = moves[Math.floor(Math.random() * moves.length)];
+                }
+            } else if (opponentType === 'ai-medium') {
+                let bestScore = -Infinity;
+                let bestMoves = [];
+
+                const pieceValues = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 900 };
+
+                function evaluateBoard() {
+                    let evaluation = 0;
+                    game.board().forEach(row => {
+                        row.forEach(sq => {
+                            if (sq) {
+                                const val = pieceValues[sq.type];
+                                evaluation += (sq.color === 'b') ? val : -val;
+                            }
+                        });
+                    });
+                    return evaluation;
+                }
+
+                moves.forEach(move => {
+                    game.move(move);
+                    let score = evaluateBoard();
+                    
+                    if (game.in_check()) score += 10;
+                    if (game.in_checkmate()) score += 10000;
+
+                    game.undo();
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMoves = [move];
+                    } else if (score === bestScore) {
+                        bestMoves.push(move);
+                    }
+                });
+
+                chosenMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+            }
+
+            if (chosenMove) {
+                executeMove(chosenMove);
+            }
+        }
+    </script>
+
+    <script>
+        function updateStatus() {
+            const banner = document.getElementById('turn-banner');
+            const statusText = document.getElementById('turn-status-text');
+
+            if (game.turn() === 'w') {
+                banner.className = "w-full bg-[#FFFDF9] cozy-border py-1 px-2 mb-1.5 text-center text-[7px] sm:text-[10px] font-bold text-[#FF4D6D] shadow-[0_3px_0px_#FFCCD5] flex items-center justify-center gap-1.5";
+                statusText.textContent = "SAKURA'S TURN (WHITE)";
+            } else {
+                banner.className = "w-full bg-[#5C4A60] cozy-border py-1 px-2 mb-1.5 text-center text-[7px] sm:text-[10px] font-bold text-white shadow-[0_3px_0px_#2D2230] flex items-center justify-center gap-1.5";
+                statusText.textContent = opponentType.startsWith('ai') ? "BAT-BOT IS THINKING..." : "BAT-ROSE'S TURN (BLACK)";
+            }
+
+            if (game.in_check() && !game.game_over()) {
+                sfx.playCheck();
+                setCoachText('check');
+            }
+
+            const container = document.getElementById('move-history-container');
+            container.innerHTML = '';
+            
+            const moves = game.history({ verbose: true });
+            document.getElementById('move-counter').textContent = `${moves.length} MOVES`;
+
+            if (moves.length === 0) {
+                container.innerHTML = `<div class="text-[#FF85A1] text-[10px] text-center my-auto font-mono uppercase">Ready to Play</div>`;
+            } else {
+                let tableHtml = `<table class="w-full text-left font-mono">
+                    <thead>
+                        <tr class="text-[#FF85A1] border-b-2 border-[#4A1E2F] text-[10px]">
+                            <th class="py-1">#</th>
+                            <th class="py-1">SAKURA</th>
+                            <th class="py-1">BAT-ROSE</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-[12px]">`;
+                
+                for (let i = 0; i < moves.length; i += 2) {
+                    const whiteMove = moves[i] ? moves[i].san : '';
+                    const blackMove = moves[i+1] ? moves[i+1].san : '';
+                    tableHtml += `<tr class="border-b border-[#4A1E2F]/10 hover:bg-[#FFF5F7]">
+                        <td class="py-1 font-bold text-[#FF85A1] text-[10px]">${Math.floor(i/2) + 1}</td>
+                        <td class="py-1 text-[#FF4D6D]">${whiteMove}</td>
+                        <td class="py-1 text-[#4A1E2F]">${blackMove}</td>
+                    </tr>`;
+                }
+                tableHtml += `</tbody></table>`;
+                container.innerHTML = tableHtml;
+                container.scrollTop = container.scrollHeight;
+            }
+
+            if (game.game_over()) {
+                handleGameOver();
+            }
+        }
+
+        function updateCaptures() {
+            const capWhiteEl = document.getElementById('captured-white');
+            const capBlackEl = document.getElementById('captured-black');
+            const capWhiteMobEl = document.getElementById('captured-white-mob');
+            const capBlackMobEl = document.getElementById('captured-black-mob');
+
+            capWhiteEl.innerHTML = '';
+            capBlackEl.innerHTML = '';
+            if (capWhiteMobEl) capWhiteMobEl.innerHTML = '';
+            if (capBlackMobEl) capBlackMobEl.innerHTML = '';
+
+            const startingCounts = { p: 8, r: 2, n: 2, b: 2, q: 1 };
+            const currentWhite = { p:0, r:0, n:0, b:0, q:0, k:0 };
+            const currentBlack = { p:0, r:0, n:0, b:0, q:0, k:0 };
+
+            game.board().forEach(row => {
+                row.forEach(sq => {
+                    if (sq) {
+                        if (sq.color === 'w') currentWhite[sq.type]++;
+                        if (sq.color === 'b') currentBlack[sq.type]++;
+                    }
+                });
+            });
+
+            for (let type in startingCounts) {
+                const diff = startingCounts[type] - currentBlack[type];
+                for (let i = 0; i < diff; i++) {
+                    const icon = document.createElement('div');
+                    icon.className = "w-6 h-6 inline-block hover:scale-110 transition-transform duration-75";
+                    icon.innerHTML = customSVGs[`b${type}`];
+                    capBlackEl.appendChild(icon);
+
+                    if (capBlackMobEl) {
+                        const iconMob = document.createElement('div');
+                        iconMob.className = "w-3.5 h-3.5 inline-block";
+                        iconMob.innerHTML = customSVGs[`b${type}`];
+                        capBlackMobEl.appendChild(iconMob);
+                    }
+                }
+            }
+
+            for (let type in startingCounts) {
+                const diff = startingCounts[type] - currentWhite[type];
+                for (let i = 0; i < diff; i++) {
+                    const icon = document.createElement('div');
+                    icon.className = "w-6 h-6 inline-block hover:scale-110 transition-transform duration-75";
+                    icon.innerHTML = customSVGs[`w${type}`];
+                    capWhiteEl.appendChild(icon);
+
+                    if (capWhiteMobEl) {
+                        const iconMob = document.createElement('div');
+                        iconMob.className = "w-3.5 h-3.5 inline-block";
+                        iconMob.innerHTML = customSVGs[`w${type}`];
+                        capWhiteMobEl.appendChild(iconMob);
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script>
+        function handleGameOver() {
+            sfx.playVictory();
+            
+            let title = "MATCH OVER";
+            let desc = "THE MATCH ENDED IN A COZY DRAW.";
+
+            if (game.in_checkmate()) {
+                const loser = game.turn();
+                const winnerColor = loser === 'w' ? 'b' : 'w';
+                if (winnerColor === 'w') {
+                    title = "SAKURA WIN!";
+                    desc = "TEAM SAKURA WINS THE COZY CHALLENGE!";
+                    setCoachText('victorySakura');
+                    launchCozyConfetti();
+                } else {
+                    title = "BAT-ROSE WIN!";
+                    desc = "TEAM BAT-ROSE TAKES THE COSY WIN!";
+                    setCoachText('victoryBerry');
+                    launchCozyConfetti();
+                }
+            } else if (game.in_stalemate()) {
+                desc = "STALEMATE! DRAW CONCLUDED.";
+                setCoachText('draw');
+            }
+
+            document.getElementById('modal-title').innerHTML = title;
+            document.getElementById('modal-desc').textContent = desc;
+            document.getElementById('game-over-modal').classList.remove('hidden');
+
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function launchCozyConfetti() {
+            const colors = ['#FFB7C5', '#FF4D6D', '#FFFDF9', '#5C4A60', '#FFF05A'];
+            const duration = 3 * 1000;
+            const end = Date.now() + duration;
+
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 60,
+                    origin: { x: 0, y: 0.8 },
+                    colors: colors
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 60,
+                    origin: { x: 1, y: 0.8 },
+                    colors: colors
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        function closeGameOverModal() {
+            document.getElementById('game-over-modal').classList.add('hidden');
+        }
+
+        function handleResetRequest() {
+            if (opponentType === 'online') {
+                updateOnlineGame(onlineGameId, {
+                    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+                    turn: 'w',
+                    history: [],
+                    whiteTime: 600,
+                    blackTime: 600
+                }).then(() => {
+                    showToast("GAME RE-INITIALIZED ONLINE!");
+                }).catch(err => {
+                    console.error("Failed to reset online match:", err);
+                });
+            } else {
+                resetGame();
+            }
+        }
+
+        function startTimers() {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(() => {
+                if (game.game_over()) return;
+
+                if (game.turn() === 'w') {
+                    if (whiteTime > 0) {
+                        whiteTime--;
+                        updateTimerDisplay('white', whiteTime);
+                    } else {
+                        handleTimeOut('w');
+                    }
+                } else {
+                    if (blackTime > 0) {
+                        blackTime--;
+                        updateTimerDisplay('black', blackTime);
+                    } else {
+                        handleTimeOut('b');
+                    }
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(player, seconds) {
+            const min = Math.floor(seconds / 60);
+            const sec = seconds % 60;
+            const formatted = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            
+            const destTimer = document.getElementById(`timer-${player}`);
+            if (destTimer) destTimer.textContent = formatted;
+
+            const mobTimer = document.getElementById(`timer-${player}-mob`);
+            if (mobTimer) mobTimer.textContent = formatted;
+        }
+
+        function handleTimeOut(loserColor) {
+            clearInterval(timerInterval);
+            sfx.playVictory();
+
+            const winnerColor = loserColor === 'w' ? 'b' : 'w';
+            let title = "";
+            let desc = "";
+
+            if (winnerColor === 'w') {
+                title = "SAKURA WIN!";
+                desc = "TEAM SAKURA WINS ON TIMEOUT!";
+                setCoachText('victorySakura');
+                launchCozyConfetti();
+            } else {
+                title = "BAT-ROSE WIN!";
+                desc = "TEAM BAT-ROSE WINS ON TIMEOUT!";
+                setCoachText('victoryBerry');
+                launchCozyConfetti();
+            }
+
+            document.getElementById('modal-title').innerHTML = title;
+            document.getElementById('modal-desc').textContent = desc;
+            document.getElementById('game-over-modal').classList.remove('hidden');
+        }
+
+        function resetGame() {
+            resetLocalState();
+            updateTimerDisplay('white', whiteTime);
+            updateTimerDisplay('black', blackTime);
+            startTimers();
+
+            updateStatus();
+            updateCaptures();
+            renderBoard();
+            setCoachText('start');
+        }
+
+        function flipBoard() {
+            isFlipped = !isFlipped;
+            sfx.playSelection();
+            renderBoard();
+        }
+
+        window.onload = function() {
+            initStaticAssets();
+            setCoachText('start');
+        };
+    </script>
+</body>
+</html>
