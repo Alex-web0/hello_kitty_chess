@@ -1,7 +1,4 @@
 {
-  "database": {
-    "rules": "database.rules.json"
-  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -10,8 +7,6 @@
       ".github/**",
       "**/.*",
       "**/node_modules/**",
-      "database.rules.json",
-      "firestore.rules",
       "firebase-debug.log"
     ],
     "rewrites": [

@@ -957,6 +957,14 @@
     </footer>
 
     <script>
+      // Safe global Firebase placeholders to prevent ReferenceError before load
+      window.isFirebaseOnline = () => false;
+      window.isFirebaseConfigured = () => false;
+      window.getCurrentUserId = () => null;
+      window.loginToFirebase = async () => {
+        throw new Error("Firebase Auth not loaded yet");
+      };
+
       class RetroSoundChip {
         constructor() {
           this.ctx = null;
@@ -1962,7 +1970,7 @@
         }
 
         if (playerUid === currentUserId) {
-          return isFirebaseOnline() ? "online" : "offline";
+          return isFirebaseActive ? "online" : "offline";
         }
 
         return Date.now() - presenceAt <= PRESENCE_OFFLINE_AFTER_MS
@@ -2034,6 +2042,30 @@
       window.startOnlinePresenceHeartbeat = startOnlinePresenceHeartbeat;
       window.stopOnlinePresenceHeartbeat = stopOnlinePresenceHeartbeat;
 
+      window.loginToFirebase = async function () {
+        if (!auth) throw new Error("Auth not initialized");
+        const syncEl = document.getElementById("syncText");
+        const btnStatus = document.getElementById("btnStatus");
+        syncEl.textContent = "LOGGING IN...";
+        btnStatus.querySelector("span").className =
+          "w-2 h-2 rounded-full bg-yellow-400 inline-block animate-pulse";
+        try {
+          if (
+            typeof __initial_auth_token !== "undefined" &&
+            __initial_auth_token
+          ) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+        } catch (err) {
+          syncEl.textContent = "OFFLINE";
+          btnStatus.querySelector("span").className =
+            "w-2 h-2 rounded-full bg-red-500 inline-block";
+          throw err;
+        }
+      };
+
       async function setupCozyFirebase() {
         const syncEl = document.getElementById("syncText");
         const btnStatus = document.getElementById("btnStatus");
@@ -2068,9 +2100,13 @@
             typeof __initial_auth_token !== "undefined" &&
             __initial_auth_token
           ) {
-            await signInWithCustomToken(auth, __initial_auth_token);
+            signInWithCustomToken(auth, __initial_auth_token).catch((err) => {
+              console.error("Custom token auth failed:", err);
+            });
           } else {
-            await signInAnonymously(auth);
+            signInAnonymously(auth).catch((err) => {
+              console.error("Anonymous auth failed:", err);
+            });
           }
 
           onAuthStateChanged(auth, (user) => {
@@ -2242,6 +2278,7 @@
 
       window.getCurrentUserId = () => currentUserId;
       window.isFirebaseOnline = () => isFirebaseActive;
+      window.isFirebaseConfigured = () => !!firebaseConfig.apiKey;
 
       window.addEventListener("load", () => {
         const roomCodeInput = document.getElementById("room-code-input");
@@ -2671,6 +2708,16 @@
 
         isMultiplayerUnlocked = true;
 
+        // Unlock online multiplayer card
+        const lockedOverlay = document.getElementById("multiplayer-locked-overlay");
+        if (lockedOverlay) {
+          lockedOverlay.classList.add("hidden");
+        }
+        const unlockedContent = document.getElementById("multiplayer-unlocked-content");
+        if (unlockedContent) {
+          unlockedContent.classList.remove("opacity-20", "pointer-events-none");
+        }
+
         // Apply profile cosmetics
         applyProfileVisuals();
         window.renderPresenceState();
@@ -3022,6 +3069,7 @@
             updateOnlineGame(onlineGameId, {
               fen: game.fen(),
               turn: game.turn(),
+              history: game.history(),
               whiteTime: whiteTime,
               blackTime: blackTime,
             }).catch((err) => {
@@ -3129,12 +3177,12 @@
 
       async function createNewOnlineRoom() {
         sfx.playClick();
-        if (!isFirebaseOnline()) {
+        if (!window.isFirebaseOnline()) {
           showToast("FIREBASE OFFLINE - COZY LOCAL ONLY!");
           return;
         }
 
-        if (!currentUserId) {
+        if (!window.getCurrentUserId()) {
           showToast("AUTH IS STILL STARTING!");
           return;
         }
@@ -3170,7 +3218,7 @@
           opponentType = "online";
           playerRole = "w";
           latestOnlinePayload = {
-            whitePlayer: currentUserId,
+            whitePlayer: window.getCurrentUserId(),
             whitePresenceAt: Date.now(),
             blackPlayer: "",
             blackPresenceAt: 0,
@@ -3204,12 +3252,12 @@
 
       async function joinOnlineRoom() {
         sfx.playClick();
-        if (!isFirebaseOnline()) {
+        if (!window.isFirebaseOnline()) {
           showToast("FIREBASE OFFLINE - COZY LOCAL ONLY!");
           return;
         }
 
-        if (!currentUserId) {
+        if (!window.getCurrentUserId()) {
           showToast("AUTH IS STILL STARTING!");
           return;
         }
@@ -3242,7 +3290,7 @@
           latestOnlinePayload = {
             whitePlayer: null,
             whitePresenceAt: 0,
-            blackPlayer: currentUserId,
+            blackPlayer: window.getCurrentUserId(),
             blackPresenceAt: Date.now(),
           };
 
@@ -3360,6 +3408,10 @@
         updateStatus();
         updateCaptures();
         renderBoard();
+
+        if (!game.game_over() && !timerInterval) {
+          startTimers();
+        }
       }
 
       function resetLocalState() {
@@ -3461,7 +3513,10 @@
         const container = document.getElementById("move-history-container");
         container.innerHTML = "";
 
-        const moves = game.history({ verbose: true });
+        const moves = (opponentType === "online" && latestOnlinePayload && latestOnlinePayload.history)
+          ? latestOnlinePayload.history
+          : game.history({ verbose: true });
+
         document.getElementById("move-counter").textContent =
           `${moves.length} MOVES`;
 
@@ -3479,8 +3534,8 @@
                     <tbody class="text-[12px]">`;
 
           for (let i = 0; i < moves.length; i += 2) {
-            const whiteMove = moves[i] ? moves[i].san : "";
-            const blackMove = moves[i + 1] ? moves[i + 1].san : "";
+            const whiteMove = moves[i] ? (typeof moves[i] === "string" ? moves[i] : moves[i].san) : "";
+            const blackMove = moves[i + 1] ? (typeof moves[i + 1] === "string" ? moves[i + 1] : moves[i + 1].san) : "";
             tableHtml += `<tr class="border-b border-[#4A1E2F]/10 hover:bg-[#FFF5F7]">
                         <td class="py-1 font-bold text-[#FF85A1] text-[10px]">${Math.floor(i / 2) + 1}</td>
                         <td class="py-1 text-[#FF4D6D]">${whiteMove}</td>
@@ -3636,6 +3691,7 @@
             {
               fen: window.STARTING_FEN,
               turn: "w",
+              history: [],
               whiteTime: 600,
               blackTime: 600,
             },
