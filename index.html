@@ -381,14 +381,13 @@
             </div>
           </div>
 
-          <!-- Online Multiplayer Card (With cute authentic unlock shield) -->
+          <!-- Online Multiplayer Card -->
           <div
             class="bg-[#F3EEF5] border-4 border-[#4A1E2F] rounded-xl p-2.5 sm:p-3 flex flex-col justify-between gap-3 relative overflow-hidden min-h-[190px]"
           >
-            <!-- Padlocked Multiplayer Mask -->
             <div
               id="multiplayer-locked-overlay"
-              class="absolute inset-0 bg-[#4A1E2F]/15 backdrop-blur-[2px] z-30 flex flex-col items-center justify-center p-3 text-center"
+              class="hidden absolute inset-0 bg-[#4A1E2F]/15 backdrop-blur-[2px] z-30 flex flex-col items-center justify-center p-3 text-center"
             >
               <div
                 id="lock-icon-container"
@@ -415,7 +414,7 @@
             <!-- Genuine Multiplayer Card Contents -->
             <div
               id="multiplayer-unlocked-content"
-              class="flex flex-col justify-between h-full gap-3 opacity-20 pointer-events-none transition-all duration-300"
+              class="flex flex-col justify-between h-full gap-3 transition-all duration-300"
             >
               <div>
                 <div
@@ -445,8 +444,7 @@
                   <input
                     id="room-code-input"
                     type="text"
-                    placeholder="CODE"
-                    maxlength="6"
+                    placeholder="COZY-XXXXXXXX"
                     class="w-1/2 p-1.5 border-2 border-[#4A1E2F] rounded-lg text-center font-mono text-[9px] sm:text-xs text-[#4A1E2F] bg-white uppercase"
                   />
                   <button
@@ -456,6 +454,12 @@
                     JOIN
                   </button>
                 </div>
+                <button
+                  onclick="openUnlockProfileModal()"
+                  class="cozy-btn-sakura text-[7px] sm:text-[8px] py-1.5 text-white font-bold"
+                >
+                  STYLE PROFILE
+                </button>
               </div>
             </div>
           </div>
@@ -488,6 +492,10 @@
                 <p class="text-[9px] text-[#4A1E2F] font-semibold">
                   White Pieces
                 </p>
+                <div
+                  id="white-presence-badge"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-[#FFF0F3] border-2 border-[#4A1E2F] rounded-full"
+                ></div>
               </div>
             </div>
             <div>
@@ -575,6 +583,10 @@
                   >10:00</span
                 >
                 <div
+                  id="white-presence-badge-mob"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 mt-0.5 bg-[#FFF0F3] border border-[#4A1E2F] rounded-full w-fit"
+                ></div>
+                <div
                   id="captured-black-mob"
                   class="flex flex-wrap gap-0.5 min-h-[10px] mt-0.5"
                 ></div>
@@ -613,6 +625,10 @@
                   class="text-xs font-bold text-[#FF4D6D] font-mono vt-font leading-none"
                   >10:00</span
                 >
+                <div
+                  id="black-presence-badge-mob"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 mt-0.5 bg-[#FFF0F3] border border-[#4A1E2F] rounded-full w-fit self-end"
+                ></div>
                 <div
                   id="captured-white-mob"
                   class="flex flex-wrap gap-0.5 min-h-[10px] mt-0.5 justify-end"
@@ -695,6 +711,10 @@
                 >
                   Black Pieces
                 </p>
+                <div
+                  id="black-presence-badge"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-[#FFF0F3] border-2 border-[#4A1E2F] rounded-full"
+                ></div>
               </div>
             </div>
             <div>
@@ -1753,10 +1773,9 @@
       import {
         getDatabase,
         ref,
-        get,
-        set,
         update,
         onValue,
+        runTransaction,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
       const appId =
@@ -1777,6 +1796,243 @@
       let isFirebaseActive = false;
       let currentUserId = null;
       let dbUnsubscribe = null;
+      let presenceHeartbeatInterval = null;
+      let latestOnlinePayload = null;
+      const STARTING_FEN =
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+      const ROOM_CODE_PREFIX = "COZY";
+      const ROOM_CODE_SUFFIX_LENGTH = 8;
+      const ROOM_CODE_PATTERN = /^COZY-[A-HJ-NP-Z2-9]{8}$/;
+      const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+      const PRESENCE_HEARTBEAT_MS = 10000;
+      const PRESENCE_OFFLINE_AFTER_MS = 30000;
+      const ONLINE_ACTION_COOLDOWNS_MS = {
+        createRoom: 15000,
+        joinRoom: 5000,
+        resetRoom: 5000,
+      };
+      const onlineActionCooldowns = Object.create(null);
+
+      function sanitizeProfileName(input) {
+        return input
+          .replace(/[^A-Za-z0-9 _-]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 11);
+      }
+
+      function normalizeRoomCode(input) {
+        const compact = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+        if (!compact.startsWith(ROOM_CODE_PREFIX)) {
+          return compact;
+        }
+
+        const suffix = compact.slice(ROOM_CODE_PREFIX.length);
+
+        return suffix ? `${ROOM_CODE_PREFIX}-${suffix}` : ROOM_CODE_PREFIX;
+      }
+
+      function createSecureRoomCode() {
+        const source = new Uint32Array(ROOM_CODE_SUFFIX_LENGTH);
+        let suffix = "";
+
+        if (window.crypto && window.crypto.getRandomValues) {
+          window.crypto.getRandomValues(source);
+        } else {
+          for (let index = 0; index < source.length; index++) {
+            source[index] = Math.floor(Math.random() * 0xffffffff);
+          }
+        }
+
+        for (let index = 0; index < ROOM_CODE_SUFFIX_LENGTH; index++) {
+          suffix +=
+            ROOM_CODE_ALPHABET[source[index] % ROOM_CODE_ALPHABET.length];
+        }
+
+        return `${ROOM_CODE_PREFIX}-${suffix}`;
+      }
+
+      function canRunOnlineAction(actionKey, waitMessage) {
+        const now = Date.now();
+        const readyAt = onlineActionCooldowns[actionKey] || 0;
+
+        if (readyAt > now) {
+          showToast(`${waitMessage} ${Math.ceil((readyAt - now) / 1000)}S`);
+          return false;
+        }
+
+        onlineActionCooldowns[actionKey] =
+          now + (ONLINE_ACTION_COOLDOWNS_MS[actionKey] || 0);
+        return true;
+      }
+
+      function assertRealtimeIdentity() {
+        if (!isFirebaseActive || !currentUserId) {
+          throw new Error("Anonymous auth is not ready yet.");
+        }
+      }
+
+      function buildRealtimeAuditFields(action) {
+        assertRealtimeIdentity();
+
+        const issuedAt = Date.now();
+        return {
+          lastUpdated: issuedAt,
+          expiresAt: issuedAt + ROOM_TTL_MS,
+          lastActorUid: currentUserId,
+          lastAction: action,
+        };
+      }
+
+      function buildPresenceFields(role, seenAt = Date.now()) {
+        if (role === "w") {
+          return { whitePresenceAt: seenAt };
+        }
+
+        if (role === "b") {
+          return { blackPresenceAt: seenAt };
+        }
+
+        return {};
+      }
+
+      function paintPresenceBadge(elementId, mode, compact = false) {
+        const badge = document.getElementById(elementId);
+        if (!badge) return;
+
+        const styles = {
+          online: {
+            label: "ONLINE",
+            shell: "bg-[#E8FFF0] text-[#256E3D]",
+            dot: "bg-green-500",
+          },
+          offline: {
+            label: "OFFLINE",
+            shell: "bg-[#F3EEF5] text-[#5C4A60]",
+            dot: "bg-gray-400",
+          },
+          waiting: {
+            label: "WAITING",
+            shell: "bg-[#FFF6D8] text-[#8A5A10]",
+            dot: "bg-yellow-400",
+          },
+          local: {
+            label: "LOCAL",
+            shell: "bg-[#FFF0F3] text-[#C63A63]",
+            dot: "bg-[#FF85A1]",
+          },
+          bot: {
+            label: "BOT",
+            shell: "bg-[#ECE7EF] text-[#433347]",
+            dot: "bg-[#5C4A60]",
+          },
+        };
+        const currentStyle = styles[mode] || styles.offline;
+        const badgeClass = compact
+          ? "inline-flex items-center gap-1 px-1.5 py-0.5 border border-[#4A1E2F] rounded-full"
+          : "inline-flex items-center gap-1 px-2 py-0.5 border-2 border-[#4A1E2F] rounded-full";
+        const textClass = compact
+          ? "text-[5px] font-bold uppercase tracking-wide"
+          : "text-[7px] font-bold uppercase tracking-wide";
+        const dotClass = compact ? "w-1.5 h-1.5" : "w-2 h-2";
+
+        badge.className = `${badgeClass} ${currentStyle.shell}`;
+        badge.innerHTML = `
+          <span class="${dotClass} rounded-full inline-block ${currentStyle.dot}"></span>
+          <span class="${textClass}">${currentStyle.label}</span>
+        `;
+      }
+
+      function getPresenceMode(role, payload = latestOnlinePayload) {
+        if (opponentType !== "online") {
+          return role === "w" ? "local" : "bot";
+        }
+
+        const playerUid =
+          role === "w" ? payload?.whitePlayer : payload?.blackPlayer;
+        const presenceAt =
+          role === "w"
+            ? payload?.whitePresenceAt || 0
+            : payload?.blackPresenceAt || 0;
+
+        if (!playerUid) {
+          return "waiting";
+        }
+
+        if (playerUid === currentUserId) {
+          return isFirebaseOnline() ? "online" : "offline";
+        }
+
+        return Date.now() - presenceAt <= PRESENCE_OFFLINE_AFTER_MS
+          ? "online"
+          : "offline";
+      }
+
+      function renderPresenceState(payload = latestOnlinePayload) {
+        paintPresenceBadge(
+          "white-presence-badge",
+          getPresenceMode("w", payload),
+        );
+        paintPresenceBadge(
+          "white-presence-badge-mob",
+          getPresenceMode("w", payload),
+          true,
+        );
+        paintPresenceBadge(
+          "black-presence-badge",
+          getPresenceMode("b", payload),
+        );
+        paintPresenceBadge(
+          "black-presence-badge-mob",
+          getPresenceMode("b", payload),
+          true,
+        );
+      }
+
+      async function sendPresenceHeartbeat() {
+        if (opponentType !== "online" || !onlineGameId || !currentUserId) {
+          return;
+        }
+
+        try {
+          await updateOnlineGame(onlineGameId, {}, "presence");
+        } catch (err) {
+          console.error("Failed to refresh live presence:", err);
+        }
+      }
+
+      function stopOnlinePresenceHeartbeat() {
+        if (presenceHeartbeatInterval) {
+          clearInterval(presenceHeartbeatInterval);
+          presenceHeartbeatInterval = null;
+        }
+      }
+
+      function startOnlinePresenceHeartbeat() {
+        stopOnlinePresenceHeartbeat();
+
+        if (opponentType !== "online" || !onlineGameId) {
+          return;
+        }
+
+        sendPresenceHeartbeat();
+        presenceHeartbeatInterval = setInterval(() => {
+          renderPresenceState();
+          sendPresenceHeartbeat();
+        }, PRESENCE_HEARTBEAT_MS);
+      }
+
+      window.STARTING_FEN = STARTING_FEN;
+      window.ROOM_CODE_PATTERN = ROOM_CODE_PATTERN;
+      window.sanitizeProfileName = sanitizeProfileName;
+      window.normalizeRoomCode = normalizeRoomCode;
+      window.createSecureRoomCode = createSecureRoomCode;
+      window.canRunOnlineAction = canRunOnlineAction;
+      window.renderPresenceState = renderPresenceState;
+      window.startOnlinePresenceHeartbeat = startOnlinePresenceHeartbeat;
+      window.stopOnlinePresenceHeartbeat = stopOnlinePresenceHeartbeat;
 
       async function setupCozyFirebase() {
         const syncEl = document.getElementById("syncText");
@@ -1825,6 +2081,7 @@
               btnStatus.querySelector("span").className =
                 "w-2 h-2 rounded-full bg-green-500 inline-block";
             } else {
+              currentUserId = null;
               isFirebaseActive = false;
               syncEl.textContent = "OFFLINE";
               btnStatus.querySelector("span").className =
@@ -1840,66 +2097,118 @@
       }
 
       window.createOnlineGameDocument = async function (gameId) {
-        if (!isFirebaseActive) return null;
+        assertRealtimeIdentity();
 
         const gameDocRef = ref(
           db,
           `artifacts/${appId}/public/data/games/${gameId}`,
         );
+        const auditFields = buildRealtimeAuditFields("create");
         const initialPayload = {
           gameId: gameId,
-          fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+          fen: STARTING_FEN,
           turn: "w",
           whitePlayer: currentUserId,
           whitePlayerName: userProfile.name,
           whitePlayerAvatar: userProfile.avatar,
           whitePlayerTheme: userProfile.theme,
-          blackPlayer: null,
+          blackPlayer: "",
+          blackPlayerName: "",
+          blackPlayerAvatar: "",
+          blackPlayerTheme: "",
           whiteTime: 600,
           blackTime: 600,
           history: [],
           captured: { white: [], black: [] },
-          lastUpdated: Date.now(),
+          whitePresenceAt: auditFields.lastUpdated,
+          blackPresenceAt: 0,
+          createdAt: auditFields.lastUpdated,
+          ...auditFields,
         };
 
-        await set(gameDocRef, initialPayload);
-        return gameDocRef;
+        const transaction = await runTransaction(
+          gameDocRef,
+          (currentData) => {
+            if (currentData) {
+              return;
+            }
+
+            return initialPayload;
+          },
+          { applyLocally: false },
+        );
+
+        if (!transaction.committed) {
+          throw new Error("Game room already exists.");
+        }
+
+        return transaction.snapshot.ref;
       };
 
       window.joinOnlineGameDocument = async function (gameId) {
-        if (!isFirebaseActive) return null;
+        assertRealtimeIdentity();
         const gameDocRef = ref(
           db,
           `artifacts/${appId}/public/data/games/${gameId}`,
         );
-        const docSnap = await get(gameDocRef);
+        const transaction = await runTransaction(
+          gameDocRef,
+          (currentData) => {
+            if (!currentData) {
+              return;
+            }
 
-        if (!docSnap.exists()) {
+            if (
+              currentData.whitePlayer === currentUserId ||
+              currentData.blackPlayer
+            ) {
+              return currentData;
+            }
+
+            return {
+              ...currentData,
+              blackPlayer: currentUserId,
+              blackPlayerName: userProfile.name,
+              blackPlayerAvatar: userProfile.avatar,
+              blackPlayerTheme: userProfile.theme,
+              blackPresenceAt: Date.now(),
+              ...buildRealtimeAuditFields("join"),
+            };
+          },
+          { applyLocally: false },
+        );
+
+        if (!transaction.snapshot.exists()) {
           throw new Error("Game room not found!");
         }
 
-        const data = docSnap.val();
-        if (data.whitePlayer !== currentUserId && !data.blackPlayer) {
-          await update(gameDocRef, {
-            blackPlayer: currentUserId,
-            blackPlayerName: userProfile.name,
-            blackPlayerAvatar: userProfile.avatar,
-            blackPlayerTheme: userProfile.theme,
-            lastUpdated: Date.now(),
-          });
+        const data = transaction.snapshot.val();
+        if (data.whitePlayer === currentUserId) {
+          throw new Error("Host cannot join as guest.");
         }
-        return gameDocRef;
+
+        if (data.blackPlayer !== currentUserId) {
+          throw new Error("Game room is already occupied.");
+        }
+
+        return transaction.snapshot.ref;
       };
 
-      window.updateOnlineGame = async function (gameId, fields) {
-        if (!isFirebaseActive) return;
+      window.updateOnlineGame = async function (
+        gameId,
+        fields,
+        action = "move",
+      ) {
+        assertRealtimeIdentity();
         const gameDocRef = ref(
           db,
           `artifacts/${appId}/public/data/games/${gameId}`,
         );
+        const auditFields = buildRealtimeAuditFields(action);
         await update(gameDocRef, {
           ...fields,
-          lastUpdated: Date.now(),
+          ...buildPresenceFields(playerRole, auditFields.lastUpdated),
+          ...auditFields,
         });
       };
 
@@ -1935,6 +2244,22 @@
       window.isFirebaseOnline = () => isFirebaseActive;
 
       window.addEventListener("load", () => {
+        const roomCodeInput = document.getElementById("room-code-input");
+        if (roomCodeInput) {
+          roomCodeInput.addEventListener("input", () => {
+            roomCodeInput.value = normalizeRoomCode(roomCodeInput.value);
+          });
+        }
+
+        const profileNameInput = document.getElementById("profile-name-input");
+        if (profileNameInput) {
+          profileNameInput.addEventListener("input", () => {
+            profileNameInput.value = sanitizeProfileName(
+              profileNameInput.value,
+            );
+          });
+        }
+
         setupCozyFirebase();
       });
     </script>
@@ -2153,14 +2478,14 @@
 
     <script>
       let isFlipped = false;
-      let opponentType = "friend"; // 'friend', 'ai-easy', 'ai-medium', 'online'
+      var opponentType = "friend"; // 'friend', 'ai-easy', 'ai-medium', 'online'
       let selectedSquare = null;
       let validMoves = [];
       let currentPromotionMove = null;
       let lastMove = null; // Track last made move for placement pop animation
 
-      let onlineGameId = null;
-      let playerRole = "w"; // 'w' for White/Sakura, 'b' for Black/Bat, 'spectator'
+      var onlineGameId = null;
+      var playerRole = "w"; // 'w' for White/Sakura, 'b' for Black/Bat, 'spectator'
 
       // Beautiful Advisor Commentaries
       const coachPhrases = {
@@ -2229,7 +2554,7 @@
         avatar: "kitty_avatar_sakura",
         nameColor: "#FF4D6D",
       };
-      let isMultiplayerUnlocked = false;
+      let isMultiplayerUnlocked = true;
 
       // Franchise Characters
       // Accurate Hello Kitty coordinates inspired by image_9890e2.png
@@ -2324,9 +2649,10 @@
       }
 
       window.saveAndUnlockProfile = function () {
-        const nickInput = document
-          .getElementById("profile-name-input")
-          .value.trim();
+        const profileNameInput = document.getElementById("profile-name-input");
+        const nickInput = window.sanitizeProfileName(profileNameInput.value);
+        profileNameInput.value = nickInput;
+
         if (!nickInput) {
           showToast("ENTER A NAME FIRST!");
           return;
@@ -2345,19 +2671,12 @@
 
         isMultiplayerUnlocked = true;
 
-        // Unlock online multiplayer card
-        document
-          .getElementById("multiplayer-locked-overlay")
-          .classList.add("hidden");
-        document
-          .getElementById("multiplayer-unlocked-content")
-          .classList.remove("opacity-20", "pointer-events-none");
-
         // Apply profile cosmetics
         applyProfileVisuals();
+        window.renderPresenceState();
 
         closeUnlockProfileModal();
-        showToast(`PROFILE UNLOCKED: ${userProfile.name.toUpperCase()}!`);
+        showToast(`PROFILE SAVED: ${userProfile.name.toUpperCase()}!`);
       };
 
       function applyProfileVisuals() {
@@ -2703,7 +3022,6 @@
             updateOnlineGame(onlineGameId, {
               fen: game.fen(),
               turn: game.turn(),
-              history: game.history({ verbose: true }),
               whiteTime: whiteTime,
               blackTime: blackTime,
             }).catch((err) => {
@@ -2769,6 +3087,9 @@
     <script>
       function startOffline(difficulty) {
         sfx.playClick();
+        window.stopOnlinePresenceHeartbeat();
+        latestOnlinePayload = null;
+        onlineGameId = null;
         opponentType = difficulty;
         playerRole = "w";
 
@@ -2788,12 +3109,21 @@
       function leaveRoomAndLobby() {
         sfx.playClick();
         stopListeningToGame();
+        window.stopOnlinePresenceHeartbeat();
         if (timerInterval) clearInterval(timerInterval);
+
+        latestOnlinePayload = null;
+        onlineGameId = null;
+        opponentType = "friend";
+        playerRole = "w";
 
         document.getElementById("game-screen").classList.add("hidden");
         document.getElementById("lobby-screen").classList.remove("hidden");
+        document.getElementById("room-info-card").classList.add("hidden");
         document.getElementById("room-info-mob").classList.add("hidden");
+        document.getElementById("room-code-input").value = "";
 
+        window.renderPresenceState();
         setCoachText("start");
       }
 
@@ -2804,14 +3134,47 @@
           return;
         }
 
-        const uniqueRoomId = "COZY-" + Math.floor(1000 + Math.random() * 9000);
+        if (!currentUserId) {
+          showToast("AUTH IS STILL STARTING!");
+          return;
+        }
+
+        if (!window.canRunOnlineAction("createRoom", "WAIT BEFORE CREATING")) {
+          return;
+        }
+
         showToast("CREATING COZY ROOM...");
 
         try {
-          await createOnlineGameDocument(uniqueRoomId);
+          let uniqueRoomId = null;
+
+          for (let attempt = 0; attempt < 5; attempt++) {
+            const candidateRoomId = window.createSecureRoomCode();
+
+            try {
+              await createOnlineGameDocument(candidateRoomId);
+              uniqueRoomId = candidateRoomId;
+              break;
+            } catch (err) {
+              if (err.message !== "Game room already exists.") {
+                throw err;
+              }
+            }
+          }
+
+          if (!uniqueRoomId) {
+            throw new Error("Could not reserve a secure room code.");
+          }
+
           onlineGameId = uniqueRoomId;
           opponentType = "online";
           playerRole = "w";
+          latestOnlinePayload = {
+            whitePlayer: currentUserId,
+            whitePresenceAt: Date.now(),
+            blackPlayer: "",
+            blackPresenceAt: 0,
+          };
 
           document.getElementById("room-code-display").textContent =
             uniqueRoomId;
@@ -2830,6 +3193,8 @@
           resetLocalState();
           listenToGameDoc(uniqueRoomId, syncOnlineState);
           applyProfileVisuals();
+          window.renderPresenceState();
+          window.startOnlinePresenceHeartbeat();
           startTimers();
         } catch (err) {
           console.error("Room creation failed:", err);
@@ -2844,12 +3209,26 @@
           return;
         }
 
-        const codeInput = document
-          .getElementById("room-code-input")
-          .value.trim()
-          .toUpperCase();
+        if (!currentUserId) {
+          showToast("AUTH IS STILL STARTING!");
+          return;
+        }
+
+        const roomCodeInput = document.getElementById("room-code-input");
+        const codeInput = window.normalizeRoomCode(roomCodeInput.value);
+        roomCodeInput.value = codeInput;
+
         if (!codeInput) {
           showToast("ENTER A ROOM CODE!");
+          return;
+        }
+
+        if (!window.ROOM_CODE_PATTERN.test(codeInput)) {
+          showToast("USE THE FULL ROOM CODE!");
+          return;
+        }
+
+        if (!window.canRunOnlineAction("joinRoom", "WAIT BEFORE JOINING")) {
           return;
         }
 
@@ -2860,6 +3239,12 @@
           onlineGameId = codeInput;
           opponentType = "online";
           playerRole = "b";
+          latestOnlinePayload = {
+            whitePlayer: null,
+            whitePresenceAt: 0,
+            blackPlayer: currentUserId,
+            blackPresenceAt: Date.now(),
+          };
 
           document.getElementById("room-code-display").textContent = codeInput;
           document.getElementById("room-code-display-mob").textContent =
@@ -2879,6 +3264,8 @@
           resetLocalState();
           listenToGameDoc(codeInput, syncOnlineState);
           applyProfileVisuals();
+          window.renderPresenceState();
+          window.startOnlinePresenceHeartbeat();
           startTimers();
         } catch (err) {
           console.error("Failed to join room:", err);
@@ -2903,6 +3290,8 @@
 
       function syncOnlineState(payload) {
         if (!payload) return;
+
+        latestOnlinePayload = payload;
 
         if (game.fen() !== payload.fen) {
           game.load(payload.fen);
@@ -2967,6 +3356,7 @@
         updateTimerDisplay("white", whiteTime);
         updateTimerDisplay("black", blackTime);
 
+        window.renderPresenceState(payload);
         updateStatus();
         updateCaptures();
         renderBoard();
@@ -3048,6 +3438,8 @@
       function updateStatus() {
         const banner = document.getElementById("turn-banner");
         const statusText = document.getElementById("turn-status-text");
+
+        window.renderPresenceState();
 
         if (game.turn() === "w") {
           banner.className =
@@ -3233,13 +3625,22 @@
 
       function handleResetRequest() {
         if (opponentType === "online") {
-          updateOnlineGame(onlineGameId, {
-            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            turn: "w",
-            history: [],
-            whiteTime: 600,
-            blackTime: 600,
-          })
+          if (
+            !window.canRunOnlineAction("resetRoom", "WAIT BEFORE RESETTING")
+          ) {
+            return;
+          }
+
+          updateOnlineGame(
+            onlineGameId,
+            {
+              fen: window.STARTING_FEN,
+              turn: "w",
+              whiteTime: 600,
+              blackTime: 600,
+            },
+            "reset",
+          )
             .then(() => {
               showToast("GAME RE-INITIALIZED ONLINE!");
             })
@@ -3333,6 +3734,7 @@
       window.onload = function () {
         initStaticAssets();
         setCoachText("start");
+        window.renderPresenceState();
       };
     </script>
   </body>
