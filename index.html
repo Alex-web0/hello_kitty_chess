@@ -303,7 +303,7 @@
           class="cozy-btn-sakura text-[7px] sm:text-[9px] py-1 px-2 sm:px-3 text-white font-bold flex items-center gap-1.5"
         >
           <span id="music-icon-holder" class="w-3.5 h-3.5 inline-block"></span>
-          <span id="musicText">BGM: OFF</span>
+          <span id="musicText">BGM: COZY</span>
         </button>
         <button
           id="btnSettings"
@@ -1117,9 +1117,10 @@
             [261.63, 2.4],
           ];
 
-          this.currentTrackList = this.track1;
-          this.bgmState = 0; // 0: Off, 1: Track 1, 2: Track 2, 3: Track 3
+          this.currentTrackList = this.track3;
+          this.bgmState = 3; // 0: Off, 1: Track 1, 2: Track 2, 3: Track 3
           this.currentNoteIndex = 0;
+          this.musicEnabled = true;
         }
 
         init() {
@@ -2532,7 +2533,16 @@
       }
       requestAnimationFrame(animateParticles);
 
+      let firstInteraction = false;
       window.addEventListener("click", (e) => {
+        if (!firstInteraction && typeof sfx !== 'undefined') {
+           firstInteraction = true;
+           sfx.init();
+           if (sfx.enabled && sfx.musicEnabled && sfx.bgmState !== 0 && !sfx.bgmTimer) {
+               sfx.playBgmStep();
+           }
+        }
+        
         const btn = e.target.closest('button, input[type="button"]');
         if (btn) {
           const isSakura =
@@ -3615,6 +3625,19 @@
 
         if (game.game_over()) {
           handleGameOver();
+        } else {
+          const fenParts = game.fen().split(' ');
+          if (fenParts.length >= 5) {
+              const halfMoves = parseInt(fenParts[4], 10);
+              if (halfMoves >= 30) {
+                  sfx.playVictory();
+                  document.getElementById("modal-title").innerHTML = "MATCH OVER";
+                  document.getElementById("modal-desc").textContent = "DRAW BY 15-MOVE RULE! No progress made.";
+                  document.getElementById("game-over-modal").classList.remove("hidden");
+                  setCoachText("draw");
+                  if (typeof timerInterval !== 'undefined' && timerInterval) clearInterval(timerInterval);
+              }
+          }
         }
       }
 
@@ -3702,13 +3725,17 @@
             launchCozyConfetti();
           }
         } else if (game.in_threefold_repetition()) {
-          desc = "DRAW BY REPETITION! (Position repeated 3 times).";
+          desc = "DRAW BY REPETITION OR PERPETUAL CHECK!";
           setCoachText("draw");
         } else if (game.in_stalemate()) {
           desc = "STALEMATE! DRAW CONCLUDED.";
           setCoachText("draw");
         } else if (game.in_draw()) {
-          desc = "DRAW CONCLUDED.";
+          if (game.insufficient_material()) {
+             desc = "DRAW! INSUFFICIENT MATERIAL.";
+          } else {
+             desc = "DRAW BY 50-MOVE RULE! No progress made.";
+          }
           setCoachText("draw");
         }
 
