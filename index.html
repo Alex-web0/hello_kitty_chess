@@ -1784,6 +1784,7 @@
         update,
         onValue,
         runTransaction,
+        get,
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
       const appId =
@@ -2187,6 +2188,13 @@
           db,
           `artifacts/${appId}/public/data/games/${gameId}`,
         );
+
+        // Fetch room first to populate transaction cache and verify existence
+        const docSnap = await get(gameDocRef);
+        if (!docSnap.exists()) {
+          throw new Error("Game room not found!");
+        }
+
         const transaction = await runTransaction(
           gameDocRef,
           (currentData) => {
@@ -2196,7 +2204,7 @@
 
             if (
               currentData.whitePlayer === currentUserId ||
-              currentData.blackPlayer
+              (currentData.blackPlayer && currentData.blackPlayer !== "")
             ) {
               return currentData;
             }
@@ -2214,8 +2222,12 @@
           { applyLocally: false },
         );
 
-        if (!transaction.snapshot.exists()) {
-          throw new Error("Game room not found!");
+        if (!transaction.committed) {
+          // If transaction was not committed but data exists, check occupation
+          const data = transaction.snapshot.val();
+          if (data && data.blackPlayer && data.blackPlayer !== currentUserId) {
+            throw new Error("Game room is already occupied.");
+          }
         }
 
         const data = transaction.snapshot.val();
